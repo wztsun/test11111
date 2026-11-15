@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>图片转 PDF 在线免费：多张照片合成一个 PDF，可排序 - 糊涂蛋工具箱</title>
+<meta name="description" content="把多张图片合成一个 PDF，顺序随便调，A4 自动排版。身份证正反面、扫描件、照片整理都能用。浏览器本地生成，文件不上传。">
+<meta name="keywords" content="图片转pdf,多张图片合成pdf,照片转pdf,身份证正反面转pdf,A4排版,a4图片合并pdf">
+<link rel="stylesheet" href="../../assets/base.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="logo" href="../../index.html"><span data-egg></span><span>糊涂蛋工具箱</span></a>
+    <div class="spacer"></div>
+    <div class="nav"><a href="./../pdf-merge/">PDF 合并</a><a href="./../image-compress/">压缩</a></div>
+  </div>
+
+  <div class="tool-head">
+    <a class="crumb" href="../../index.html">← 全部工具</a>
+    <h1>图片转 PDF</h1>
+    <p>几张照片、一堆截图，想合成一个 PDF 交出去？拖进来排好顺序，选个纸张，生成了一个文件。本地生成，不上传。</p>
+  </div>
+
+  <div class="tool-body card">
+    <div class="drop" id="drop">
+      <p class="big">把图片拖进来，或者点一下选</p>
+      <p class="sub">支持 jpg / png / webp，按添加顺序排页，进来还能调</p>
+      <input type="file" accept="image/*" multiple>
+    </div>
+
+    <ul class="filelist" id="files"></ul>
+
+    <div class="row">
+      <div class="field" style="min-width:170px">
+        <label>纸张</label>
+        <select id="size">
+          <option value="a4p">A4 竖版（默认）</option>
+          <option value="a4l">A4 横版</option>
+          <option value="auto">按图片尺寸来</option>
+        </select>
+      </div>
+      <div class="field" style="min-width:150px">
+        <label>图片怎么放</label>
+        <select id="fit">
+          <option value="contain">完整放下，留白</option>
+          <option value="cover">铺满整页，边上裁掉</option>
+        </select>
+      </div>
+      <div class="field" style="max-width:120px">
+        <label>边距（mm）</label>
+        <input type="number" id="margin" value="10" min="0" max="40">
+      </div>
+      <button class="btn primary" id="go" disabled>生成 PDF</button>
+    </div>
+
+    <div class="res" id="res"></div>
+
+    <p class="note"><b>证件照拼一页？</b>把身份证正面、反面各拍一张加进来，选 A4 竖版和"完整放下"，就会是一页里上下两张。要是想两张并排，用 <a href="./../image-resize/">改尺寸</a> 先拼成一张再转。</p>
+  </div>
+
+  <div class="related card" style="margin-top:22px">
+    <h3 style="font-size:16px">说明</h3>
+    <p class="muted" style="font-size:13.5px;margin:8px 0 0">生成的是标准 PDF，微信、邮件、政务系统都能直接传。图片会先按 92% 画质压成 JPEG 再嵌进去，几十张也不会撑成几十兆。</p>
+  </div>
+
+  <footer>
+    <div>文件不离开你的设备 · 不上传服务器 · 不存任何记录</div>
+    <div style="margin-top:6px"><a href="../../index.html">回首页</a> · support@hutudan.com</div>
+  </footer>
+</div>
+
+<script src="../../assets/pdf-lib.min.js"></script>
+<script src="../../assets/common.js"></script>
+<script>
+(function(){
+  var F = window.FT, $ = F.$, files = [], busy = false;
+  var res = $('#res'), go = $('#go');
+  var A4 = [595.28, 841.89];
+
+  function render(){
+    var list = $('#files'); list.innerHTML = '';
+    files.forEach(function(f, i){
+      var li = document.createElement('li');
+      li.innerHTML = '<span class="idx">' + (i + 1) + '.</span><span class="nm"></span><span class="sz"></span>' +
+        '<button class="mv" data-d="-1">↑</button><button class="mv" data-d="1">↓</button><button class="rm">✕</button>';
+      li.querySelector('.nm').textContent = f.name;
+      li.querySelector('.sz').textContent = F.fmtSize(f.size);
+      li.querySelector('.rm').onclick = function(e){ e.stopPropagation(); files.splice(i,1); render(); };
+      F.$$('.mv', li).forEach(function(b){
+        b.onclick = function(e){
+          e.stopPropagation();
+          var j = i + (+b.dataset.d);
+          if (j < 0 || j >= files.length) return;
+          var t = files[i]; files[i] = files[j]; files[j] = t; render();
+        };
+      });
+      li.querySelector('.idx').style.cssText = 'font-weight:900;color:#f0ab00;min-width:20px';
+      list.appendChild(li);
+    });
+    go.disabled = !files.length || busy;
+  }
+
+  F.setupDrop($('#drop'), function(fs){
+    files = files.concat(fs.filter(function(f){ return /^image\//.test(f.type); }));
+    render();
+  });
+
+  async function fileToJpegBytes(file){
+    var o = await F.loadImage(file);
+    var img = o.img;
+    var maxSide = 2400;
+    var w = img.naturalWidth, h = img.naturalHeight;
+    var s = Math.min(1, maxSide / Math.max(w, h));
+    w = Math.round(w * s); h = Math.round(h * s);
+    var cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    var ctx = cv.getContext('2d');
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    URL.revokeObjectURL(o.url);
+    var blob = await F.canvasToBlob(cv, 'image/jpeg', 0.92);
+    var buf = await blob.arrayBuffer();
+    return { bytes: new Uint8Array(buf), w: w, h: h };
+  }
+
+  go.onclick = async function(){
+    if (!files.length || busy) return;
+    if (!window.PDFLib){ F.toast('PDF 库没加载上，刷新一下'); return; }
+    busy = true; go.disabled = true; res.innerHTML = '';
+    var item = document.createElement('div');
+    item.className = 'item';
+    item.innerHTML = '<span class="nm">正在生成…</span><span class="stat">0 / ' + files.length + '</span>';
+    res.appendChild(item);
+    try {
+      var PDFLib = window.PDFLib;
+      var doc = await PDFLib.PDFDocument.create();
+      var sizeMode = $('#size').value, fit = $('#fit').value;
+      var marginPt = Math.max(0, +$('#margin').value || 0) * 2.8346;
+
+      for (var i = 0; i < files.length; i++){
+        var r = await fileToJpegBytes(files[i]);
+        var jpg = await doc.embedJpg(r.bytes);
+        var pw, ph;
+        if (sizeMode === 'a4p'){ pw = A4[0]; ph = A4[1]; }
+        else if (sizeMode === 'a4l'){ pw = A4[1]; ph = A4[0]; }
+        else { pw = r.w * 0.75 + marginPt * 2; ph = r.h * 0.75 + marginPt * 2; }
+        var page = doc.addPage([pw, ph]);
+        var aw = pw - marginPt * 2, ah = ph - marginPt * 2;
+        var scale, dw, dh;
+        if (fit === 'cover'){
+          scale = Math.max(aw / r.w, ah / r.h);
+        } else {
+          scale = Math.min(aw / r.w, ah / r.h);
+        }
+        dw = r.w * scale; dh = r.h * scale;
+        page.drawImage(jpg, {
+          x: (pw - dw) / 2,
+          y: (ph - dh) / 2,
+          width: dw, height: dh
+        });
+        item.querySelector('.stat').textContent = (i + 1) + ' / ' + files.length;
+        go.textContent = '生成中… ' + (i + 1) + '/' + files.length;
+      }
+      var bytes = await doc.save();
+      var blob = new Blob([bytes], { type: 'application/pdf' });
+      item.querySelector('.nm').textContent = '好了，共 ' + files.length + ' 页';
+      item.querySelector('.stat').textContent = F.fmtSize(blob.size);
+      var a = document.createElement('button');
+      a.className = 'btn sm primary'; a.textContent = '下载 PDF';
+      a.onclick = function(){ F.download(blob, '糊涂蛋合成.pdf'); };
+      item.appendChild(a);
+      item.classList.add('ok');
+      F.toast('PDF 生成完毕');
+    } catch (e){
+      item.querySelector('.stat').textContent = '失败：' + e.message;
+    }
+    busy = false; go.disabled = !files.length; go.textContent = '生成 PDF';
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>
