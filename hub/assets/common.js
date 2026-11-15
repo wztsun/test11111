@@ -91,7 +91,9 @@
     { id: 'image-resize', icon: '📐', name: '图片改尺寸', desc: '一寸二寸、800×800、公众号封面，都能改', color: '#7fd1b9' },
     { id: 'image-convert', icon: '🔁', name: '图片格式转换', desc: 'heic 转 jpg、webp 转 png，苹果图也能转', color: '#8ab6e8' },
     { id: 'image-to-pdf', icon: '📄', name: '图片转 PDF', desc: '多张图合成一个 PDF，可排序，A4 排好', color: '#ffb0c8' },
-    { id: 'pdf-merge', icon: '🧩', name: 'PDF 合并与拆分', desc: '几个 PDF 合成一个，或者只要某几页', color: '#ff7a45' }
+    { id: 'pdf-merge', icon: '🧩', name: 'PDF 合并与拆分', desc: '几个 PDF 合成一个，或者只要某几页', color: '#ff7a45' },
+    { id: 'pdf-compress', icon: '🗜️', name: 'PDF 压缩', desc: '几十兆的 PDF 压到能发出去，可选画质档位', color: '#ff9f43' },
+    { id: 'docx-compress', icon: '📝', name: 'Word 文档压缩', desc: 'docx 里的大图缩小，正文排版一点不动', color: '#8b95f6' }
   ];
 
   window.FT = {
