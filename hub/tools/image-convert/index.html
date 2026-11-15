@@ -138,6 +138,10 @@
     ctx.drawImage(img, 0, 0);
     URL.revokeObjectURL(o.url);
     var b = await F.canvasToBlob(cv, type, q);
+    // 本来就是目标格式、重压之后反而更大：直接把原文件给他，别做无谓的画质损耗
+    if ((file.type || '') === type && b.size >= file.size) {
+      return { blob: file, note: '', passthrough: true };
+    }
     return { blob: b, note: note };
   }
 
@@ -155,7 +159,9 @@
       res.appendChild(item);
       try {
         var r = await convertOne(f, type, q);
-        item.querySelector('.stat').textContent = (r.note || '') + F.fmtSize(f.size) + ' → ' + ext.toUpperCase() + ' · ' + F.fmtSize(r.blob.size);
+        item.querySelector('.stat').textContent = r.passthrough
+          ? F.fmtSize(f.size) + ' · 本来就是这个格式，原样给你'
+          : (r.note || '') + F.fmtSize(f.size) + ' → ' + ext.toUpperCase() + ' · ' + F.fmtSize(r.blob.size);
         var a = document.createElement('button');
         a.className = 'btn sm primary'; a.textContent = '下载';
         a.onclick = function(b, n){ return function(){ F.download(b, n); }; }(r.blob, F.saveName(f.name, ext));
