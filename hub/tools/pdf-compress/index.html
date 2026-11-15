@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PDF 压缩在线免费：把几十兆的 PDF 压下来，不上传 - 糊涂蛋工具箱</title>
+<meta name="description" content="PDF 体积太大发不出去？在线压缩 PDF，可选均衡、更小、清晰三档，也可以只清理文档结构不降画质。浏览器本地处理，文件不上传。">
+<meta name="keywords" content="pdf压缩,pdf变小,pdf瘦身,扫描件压缩,在线pdf压缩,pdf文件太大">
+<link rel="stylesheet" href="../../assets/base.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="logo" href="../../index.html"><span data-egg></span><span>糊涂蛋工具箱</span></a>
+    <div class="spacer"></div>
+    <div class="nav"><a href="./../pdf-merge/">合并拆分</a><a href="./../image-compress/">图片压缩</a></div>
+  </div>
+
+  <div class="tool-head">
+    <a class="crumb" href="../../index.html">← 全部工具</a>
+    <h1>PDF 压缩</h1>
+    <p>报名系统限 5 兆、邮箱限 10 兆，PDF 又压不下来？选一档画质压一下就行。扫描件、图片型 PDF 掉得最多。文件不上传，本地处理。</p>
+  </div>
+
+  <div class="tool-body card">
+    <div class="drop" id="drop">
+      <p class="big">把 PDF 拖进来，或者点一下选</p>
+      <p class="sub">支持标准 PDF，可以一次选多份；加密的先用密码解锁再压</p>
+      <input type="file" accept="application/pdf,.pdf" multiple>
+    </div>
+
+    <ul class="filelist" id="files"></ul>
+
+    <div class="row">
+      <div class="field" style="min-width:190px">
+        <label>压缩档位</label>
+        <select id="mode">
+          <option value="balance">均衡（推荐，字还清楚）</option>
+          <option value="small">更小（体积优先，字会糊一点）</option>
+          <option value="clear">清晰（印出来用）</option>
+          <option value="lossless">只清结构（不降画质）</option>
+        </select>
+      </div>
+      <button class="btn primary" id="go" disabled>开始压缩</button>
+    </div>
+
+    <p class="note"><b>怎么压的：</b>均衡和更小会把每一页按对应清晰度重画成图再装回 PDF，所以图片型 PDF 掉得最狠，也能压到几乎任何尺寸；代价是文字变成图，不能再选中复制。只清结构那一档保留原来的文字和矢量，只去掉冗余对象，掉得少但一个字都不动。</p>
+
+    <div class="res" id="res"></div>
+  </div>
+
+  <div class="related card" style="margin-top:22px">
+    <h3 style="font-size:16px">常见情况</h3>
+    <p class="muted" style="font-size:13.5px;margin:8px 0 0">扫描件、拍照转的 PDF 一般能压掉七到九成；纯文字排版的 PDF（Word 导出的）本来就小，压完可能只小一点点，那种别压，直接发就行。要合并或挑页请用 <a href="./../pdf-merge/">PDF 合并与拆分</a>。</p>
+  </div>
+
+  <footer>
+    <div>文件不离开你的设备 · 不上传服务器 · 不存任何记录</div>
+    <div style="margin-top:6px"><a href="../../index.html">回首页</a>　·　support@hutudan.com</div>
+  </footer>
+</div>
+
+<script src="../../assets/pdf.min.js"></script>
+<script src="../../assets/pdf-lib.min.js"></script>
+<script src="../../assets/common.js"></script>
+<script>
+(function(){
+  var F = window.FT, $ = F.$, files = [], busy = false;
+  var res = $('#res'), go = $('#go');
+  var pdfjs = window.pdfjsLib;
+  if (pdfjs) pdfjs.GlobalWorkerOptions.workerSrc = '../../assets/pdf.worker.min.js';
+
+  var MODES = {
+    balance: { dpi: 100, q: 0.74 },
+    small:   { dpi: 72,  q: 0.6 },
+    clear:   { dpi: 150, q: 0.86 }
+  };
+
+  function render(){
+    var list = $('#files'); list.innerHTML = '';
+    files.forEach(function(f, i){
+      var li = document.createElement('li');
+      li.innerHTML = '<span class="nm"></span><span class="sz"></span><button class="rm">✕</button>';
+      li.querySelector('.nm').textContent = f.name;
+      li.querySelector('.sz').textContent = F.fmtSize(f.size);
+      li.querySelector('.rm').onclick = function(e){ e.stopPropagation(); files.splice(i,1); render(); };
+      list.appendChild(li);
+    });
+    go.disabled = !files.length || busy;
+  }
+
+  F.setupDrop($('#drop'), function(fs){
+    files = files.concat(fs.filter(function(f){
+      return /pdf$/i.test(f.type || '') || /\.pdf$/i.test(f.name);
+    }));
+    render();
+  });
+
+  async function rasterise(buf, mode){
+    var opt = MODES[mode];
+    var scale = opt.dpi / 72;
+    var pdf = await pdfjs.getDocument({ data: buf, isEvalSupported: false }).promise;
+    var outDoc = await window.PDFLib.PDFDocument.create();
+    var pageSizes = [];
+    for (var i = 1; i <= pdf.numPages; i++){
+      var page = await pdf.getPage(i);
+      var base = page.getViewport({ scale: 1 });
+      var w = Math.round(base.width * scale), h = Math.round(base.height * scale);
+      var cap = 7000000;
+      if (w * h > cap){
+        var k = Math.sqrt(cap / (w * h));
+        w = Math.round(w * k); h = Math.round(h * k);
+      }
+      var vp = page.getViewport({ scale: w / base.width });
+      var cv = document.createElement('canvas');
+      cv.width = vp.width; cv.height = vp.height;
+      var ctx = cv.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+      var blob = await F.canvasToBlob(cv, 'image/jpeg', opt.q);
+      var jpg = await outDoc.embedJpg(new Uint8Array(await blob.arrayBuffer()));
+      var p = outDoc.addPage([base.width, base.height]);
+      p.drawImage(jpg, { x: 0, y: 0, width: base.width, height: base.height });
+      pageSizes.push(Math.round(base.width) + '×' + Math.round(base.height));
+      if (page.cleanup) page.cleanup();
+    }
+    var bytes = await outDoc.save();
+    return { bytes: bytes, stats: { pages: pdf.numPages, pageSizes: pageSizes } };
+  }
+
+  function cleanStructure(buf){
+    return window.PDFLib.PDFDocument.load(buf, { ignoreEncryption: true })
+      .then(function(doc){ return doc.save({ useObjectStreams: true }); })
+      .then(function(bytes){ return { bytes: bytes, stats: { pages: 0, pageSizes: [] } }; });
+  }
+
+  go.onclick = async function(){
+    if (!files.length || busy) return;
+    busy = true; go.disabled = true; res.innerHTML = '';
+    var mode = $('#mode').value;
+    for (var i = 0; i < files.length; i++){
+      var f = files[i];
+      var item = document.createElement('div');
+      item.className = 'item';
+      item.innerHTML = '<span class="nm"></span><span class="stat">压缩中…</span>';
+      item.querySelector('.nm').textContent = f.name;
+      res.appendChild(item);
+      try {
+        var buf = await f.arrayBuffer();
+        var r;
+        if (mode === 'lossless'){
+          r = await cleanStructure(buf);
+        } else {
+          if (!pdfjs) throw new Error('PDF 解析库没加载上，刷新一下再试');
+          r = await rasterise(buf, mode);
+        }
+        var blob = new Blob([r.bytes], { type: 'application/pdf' });
+        var savedPct = Math.round((1 - blob.size / f.size) * 100);
+        var stat = item.querySelector('.stat');
+        stat.textContent = F.fmtSize(f.size) + ' → ' + F.fmtSize(blob.size) +
+          ' · ' + (savedPct >= 0 ? '省了 ' + savedPct + '%' : '比原来大了');
+        var a = document.createElement('button');
+        a.className = 'btn sm primary'; a.textContent = '下载';
+        a.onclick = function(b, n){ return function(){ F.download(b, n); }; }(blob, F.saveName(f.name, 'pdf'));
+        item.appendChild(a);
+        if (r.stats && r.stats.pages) item.title = r.stats.pages + ' 页';
+        go.textContent = '压缩中… ' + (i + 1) + '/' + files.length;
+      } catch (e){
+        item.querySelector('.stat').textContent = '失败：' + e.message;
+      }
+    }
+    busy = false; go.disabled = !files.length; go.textContent = '开始压缩';
+    F.toast('压完了');
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>
