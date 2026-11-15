@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>浮世 · 水上求生</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;background:#04070f;color:#dfe9f5;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Serif SC","Microsoft YaHei",serif;overflow:hidden}
+  #sea{position:fixed;inset:0;width:100%;height:100%}
+  .wrap{position:fixed;inset:0;display:flex;flex-direction:column;padding:max(16px,env(safe-area-inset-top)) 18px max(16px,env(safe-area-inset-bottom));gap:12px}
+  header{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .day{font-size:11px;letter-spacing:.3em;color:#6d8aa8}
+  .day b{display:block;font-size:26px;letter-spacing:.04em;color:#eaf4ff;margin-top:2px}
+  .stats{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:6px 10px;max-width:340px}
+  .st{font-size:10px;letter-spacing:.14em;color:#7e97b3}
+  .bar{height:4px;border-radius:2px;background:rgba(120,170,220,.16);margin-top:4px;overflow:hidden}
+  .bar i{display:block;height:100%;width:50%;border-radius:2px;transition:width .5s ease,background .5s}
+  .w i{background:linear-gradient(90deg,#3ea6ff,#8de6ff)}
+  .f i{background:linear-gradient(90deg,#4fc98a,#b6f0a0)}
+  .h i{background:linear-gradient(90deg,#ffb04f,#ffd89a)}
+  .card{flex:0 0 auto;background:linear-gradient(180deg,rgba(14,24,40,.92),rgba(8,14,26,.94));border:1px solid rgba(110,170,220,.16);border-radius:18px;padding:20px 20px 18px;box-shadow:0 24px 60px -24px #000,inset 0 1px 0 rgba(255,255,255,.05)}
+  .card h2{font-size:16.5px;line-height:1.5;font-weight:600;color:#eaf4ff;letter-spacing:.02em;min-height:50px}
+  .card p{font-size:14px;line-height:1.85;color:#9fb4cc;margin-top:10px;min-height:78px;white-space:pre-wrap}
+  .opts{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+  .opt{width:100%;text-align:left;padding:13px 16px;border-radius:12px;border:1px solid rgba(120,180,235,.22);background:rgba(30,52,82,.45);color:#d9e8f7;font-size:14.5px;line-height:1.5;font-family:inherit;cursor:pointer;transition:.18s}
+  .opt:hover{background:rgba(44,80,122,.65);border-color:rgba(140,210,255,.5);transform:translateY(-1px)}
+  .opt:active{transform:scale(.99)}
+  .opt small{display:block;font-size:11.5px;color:#7f9ab6;margin-top:3px;letter-spacing:.02em}
+  .log{font-size:11.5px;line-height:1.8;color:#6b87a6;max-height:66px;overflow:hidden;letter-spacing:.01em}
+  .log b{color:#9fc4e6;font-weight:500}
+  .end{position:fixed;inset:0;display:none;place-items:center;padding:26px;background:radial-gradient(ellipse at 50% 30%,rgba(24,52,86,.9),rgba(3,6,12,.97));backdrop-filter:blur(8px);z-index:5}
+  .end.on{display:grid}
+  .endbox{max-width:440px;text-align:center}
+  .endbox .tag{font-size:11px;letter-spacing:.42em;color:#7fa8cc}
+  .endbox h1{font-size:30px;margin:12px 0 14px;letter-spacing:.06em;font-weight:600;color:#fff}
+  .endbox p{font-size:14px;line-height:2;color:#a6bdd6;white-space:pre-wrap}
+  .endbox button{margin-top:24px;padding:13px 40px;border:0;border-radius:999px;font-size:14px;font-weight:600;letter-spacing:.16em;color:#04121f;background:linear-gradient(135deg,#8fe3ff,#7aa9ff);font-family:inherit;cursor:pointer}
+  .fade{animation:fi .45s ease}
+  @keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+<canvas id="sea"></canvas>
+<div class="wrap">
+  <header>
+    <div class="day">第 <b id="day">1</b> 天</div>
+    <div class="stats">
+      <div class="st w">淡水<div class="bar"><i id="bw"></i></div></div>
+      <div class="st f">食物<div class="bar"><i id="bf"></i></div></div>
+      <div class="st h">船体<div class="bar"><i id="bh"></i></div></div>
+    </div>
+  </header>
+  <div class="card" id="card">
+    <h2 id="title">浮世</h2>
+    <p id="text">你是在三体船的甲板上醒来的。远处只有水，一直铺到天边，再没有别的。</p>
+    <div class="opts" id="opts"></div>
+  </div>
+  <div class="log" id="log"></div>
+</div>
+
+<div class="end" id="end">
+  <div class="endbox">
+    <div class="tag" id="endTag">终局</div>
+    <h1 id="endTitle">干地</h1>
+    <p id="endText"></p>
+    <button id="again">重新起航</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var S = null;
+  var SAVE_KEY = 'float_world_save_v1';
+
+  function newState() {
+    return { day: 1, water: 62, food: 55, hull: 72, clue: 0, mud: 0, died: false, log: [] };
+  }
+
+  /* ---------------- 事件库 ---------------- */
+  // 每个事件: {id, w: 权重函数, title, text, opts:[{l 标签, s 小字, run(S)=> {msg, then}}]}
+  // run 返回 {msg, sub?}，msg 写进日志
+  var EVENTS = [];
+
+  function ev(o) { EVENTS.push(o); }
+
+  /* --- 生存类 --- */
+  ev({
+    id: 'still', w: function (s) { return s.water < 45 ? 4 : 1; },
+    title: '停电的蒸馏器',
+    text: '太阳能蒸馏器里的水位比昨天低了一截。滤网被盐晶堵住，铜管上结了一层白霜。\n\n再这样下去，三天后就没有能喝的水了。',
+    opts: [
+      { l: '拆开清理滤网，耗掉一整天', s: '水 +18 · 体力 -10', run: function (s) { s.water = Math.min(100, s.water + 18); s.hull -= 2; return { msg: '你跪在滚烫的甲板上刮盐，手指被划开几道口子。水回来了。' }; } },
+      { l: '只擦表面，省时间继续赶路', s: '水 +6 · 明天可能再堵', run: function (s) { s.water = Math.min(100, s.water + 6); return { msg: '你把能摸到的地方擦了一遍，滤网深处还是硬的。' }; } },
+      { l: '用存着的那罐雨水顶上', s: '水 +22 · 之后没后手', run: function (s) { s.water = Math.min(100, s.water + 22); s.food -= 2; s.log.push('最后那罐雨水没了'); return { msg: '罐子见底时你听见风穿过空罐的声音。' }; } }
+    ]
+  });
+
+  ev({
+    id: 'fish', w: function () { return 3; },
+    title: '鱼群',
+    text: '正午，几百条银色的鱼贴着船底游过，像一片会动的铁屑。\n\n但你只有一支用铁丝弯的鱼钩，和半罐腌过的鱼皮当饵。',
+    opts: [
+      { l: '全神贯注地钓一整天', s: '食物 +26 · 体力 -12', run: function (s) { s.food = Math.min(100, s.food + 26); return { msg: '入夜前你拖上来七条，最大的有前臂那么长。' }; } },
+      { l: '下网兜一把，赌运气', s: '50% 食物 +34 / 50% 空手', run: function (s) { if (Math.random() < 0.5) { s.food = Math.min(100, s.food + 34); return { msg: '网兜起水时沉得压手，鱼在里头炸开一片水花。' }; } return { msg: '网是空的，只有海藻挂在上头。' }; } },
+      { l: '不钓了，把饵留给下一次', s: '食物 +4', run: function (s) { s.food = Math.min(100, s.food + 4); return { msg: '你把饵收回罐里，看着鱼群游远。' }; } }
+    ]
+  });
+
+  ev({
+    id: 'storm', w: function (s) { return s.hull < 55 ? 3 : 2; },
+    title: '黑墙',
+    text: '西南边的天色变了。云不是飘过来的，是压下来的，海面被推成一面倾斜的墙。\n\n你有大约二十分钟。',
+    opts: [
+      { l: '收帆，把自己绑在桅杆上', s: '船体 -10 · 淡水 +12（白捡的雨）', run: function (s) { s.hull -= 10; s.water = Math.min(100, s.water + 12); return { msg: '你在浪里趴了一夜，嘴里灌满雨水，也灌满咸水。' }; } },
+      { l: '抢风穿过风眼', s: '60% 船体 -4 · 40% 船体 -26', run: function (s) { if (Math.random() < 0.6) { s.hull -= 4; return { msg: '你把稳了舵，船像一片叶子滑过风暴边缘。' }; } s.hull -= 26; return { msg: '一根横梁断了，海水涌进底舱，你用手泵抽到天亮。' }; } },
+      { l: '往环礁方向躲，赌那里有避风港', s: '体力 -8 · 可能遇到人', run: function (s) { s.food -= 3; if (Math.random() < 0.55) { s.mud += 1; return { msg: '环礁的背风面挤着三艘破船，有人朝你举起一只柴油桶。' }; } return { msg: '环礁是空的，只有锈死的钢架在浪里叫。' }; } }
+    ]
+  });
+
+  ev({
+    id: 'hullcrack', w: function (s) { return s.hull < 50 ? 5 : 0.6; },
+    title: '底舱渗水',
+    text: '半夜你被凉意泡醒。底舱的水已经漫过脚踝，一条焊缝正在往外冒细小的水柱。\n\n手边只有一块铅皮、一把橡胶锤，和半罐鱼胶。',
+    opts: [
+      { l: '把铅皮铆上去，慢慢敲', s: '船体 +14 · 食物 -4', run: function (s) { s.hull = Math.min(100, s.hull + 14); s.food -= 4; return { msg: '你敲到天快亮，水停了。手指抖得拿不住锤子。' }; } },
+      { l: '先用鱼胶糊上，明天再说', s: '船体 +5', run: function (s) { s.hull = Math.min(100, s.hull + 5); return { msg: '胶糊住了，但它撑不了太久。' }; } },
+      { l: '不管，全靠手泵抽', s: '体力 -18 · 船体 -6', run: function (s) { s.hull -= 6; return { msg: '你抽了一夜水，天亮时手泵的皮碗也磨穿了。' }; } }
+    ]
+  });
+
+  /* --- 打捞 / 线索 --- */
+  ev({
+    id: 'salvage', w: function (s) { return s.clue < 5 ? 4 : 1; },
+    title: '沉在水下的塔顶',
+    text: '水清得反常。你能看见十几米下的城市——只剩半截塔尖，玻璃窗里还卡着一条褪色的旗。\n\n潜下去，也许有东西。也可能有别的。',
+    opts: [
+      { l: '深吸一口气潜下去', s: '线索 +1 · 有风险', run: function (s) {
+        if (Math.random() < 0.72) { s.clue += 1; s.food += 3; return { msg: '你在塔里摸到一只铁盒，里头是半张被水泡烂的航海图。' }; }
+        s.hull -= 6; return { msg: '一只灰白的影子从窗里出来，你蹬着水往上窜，肩膀撞在钢架上。' };
+      } },
+      { l: '先在上面观察，记下水纹', s: '线索 +1（慢）', run: function (s) { s.clue += 1; return { msg: '你趴在船舷看了很久，看清了水下的街道走向。' }; } },
+      { l: '不冒险，绕过去', s: '无事', run: function () { return { msg: '你调转船头。塔尖在身后慢慢沉进蓝色里。' }; } }
+    ]
+  });
+
+  ev({
+    id: 'atoll', w: function () { return 3; },
+    title: '环礁集市',
+    text: '一座用废船焊起来的浮城。几十条船绑在一起，中间是交易的空地。\n\n这里泥土是硬通货，一捧能换一桶水。你身上只有一点，和几张旧地图。',
+    opts: [
+      { l: '换水', s: '泥土 -1 · 水 +30', run: function (s) { if (s.mud < 1) return { msg: '你摸遍口袋，一把土都没有。摊主把手一摊，转过身去。' }; s.mud -= 1; s.water = Math.min(100, s.water + 30); return { msg: '土换水，一手交一手。对方称土的时候很慢。' }; } },
+      { l: '换青霉素，修伤', s: '泥土 -1 · 船体 +16', run: function (s) { if (s.mud < 1) return { msg: '没有土。你只能看着那支药被放回盒子里。' }; s.mud -= 1; s.hull = Math.min(100, s.hull + 16); return { msg: '你把药抹在手上的裂口里，刺痛过去之后，是久违的轻松。' }; } },
+      { l: '拿旧地图换消息', s: '线索 +1 · 若已有线索再 +1', run: function (s) { s.clue += s.clue < 3 ? 2 : 1; s.food -= 3; return { msg: '一个老人用手指蘸水，在甲板上画了一条线，说顺着暖流走。' }; } },
+      { l: '什么也不换，直接离开', s: '无事', run: function () { return { msg: '你解开缆绳，浮城在身后慢慢散成一堆灯。' }; } }
+    ]
+  });
+
+  ev({
+    id: 'smoker', w: function (s) { return s.clue >= 2 ? 3 : 1; },
+    title: '烟者',
+    text: '三艘摩托艇从西南方切开海面，引擎声像有人在敲铁皮。他们不悬挂任何旗子，只在船头烧着柴油。\n\n你手里只有一支鱼枪。',
+    opts: [
+      { l: '全速逃，斜切浪头', s: '船体 -8 · 逃掉', run: function (s) { s.hull -= 8; return { msg: '你在浪里拐了七八个弯，等引擎声散掉时，天已经暗了。' }; } },
+      { l: '把食物扔过去，买路', s: '食物 -18 · 安全', run: function (s) { s.food = Math.max(0, s.food - 18); return { msg: '他们接了箱子，冲你举起一只油桶晃了晃，掉头走了。' }; } },
+      { l: '迎上去，用鱼枪搏一次', s: '50% 缴获物资 / 50% 重伤', run: function (s) {
+        if (Math.random() < 0.5) { s.food = Math.min(100, s.food + 12); s.water = Math.min(100, s.water + 10); s.mud += 1; return { msg: '你把鱼枪捅进第一艘艇的油箱，他们骂着散开。你捡回一箱东西。' }; }
+        s.hull -= 22; return { msg: '枪被挡开了。你被撞到船舷上，肋骨像断了一根。' };
+      } }
+    ]
+  });
+
+  ev({
+    id: 'whale', w: function () { return 1.6; },
+    title: '鲸',
+    text: '水面下浮起一片巨大的阴影，大得让阳光都暗了一瞬。它跟着你的船游了很久，偶尔吐出一柱水雾。\n\n它不凶，但也没有离开的意思。',
+    opts: [
+      { l: '跟着它游', s: '线索 +1 · 淡水 +8', run: function (s) { s.clue += 1; s.water = Math.min(100, s.water + 8); return { msg: '它带你去了一片水色更浅的海，那里的雨下得更勤。' }; } },
+      { l: '趁它换气时抢它身边的东西', s: '食物 +20 · 风险', run: function (s) { if (Math.random() < 0.7) { s.food = Math.min(100, s.food + 20); return { msg: '它身边漂着被翻上来的鱼，你捞了满满一筐。' }; } s.hull -= 14; return { msg: '尾巴扫过船底，整条船被抬起来又砸下去。' }; } },
+      { l: '安静地漂着，看它走', s: '体力 +10', run: function () { return { msg: '它最后沉下去了，水面上的圈慢慢散平。' }; } }
+    ]
+  });
+
+  ev({
+    id: 'rain', w: function (s) { return s.water < 40 ? 4 : 1.4; },
+    title: '雨',
+    text: '云低得像盖子，第一滴雨砸在铁皮上，响得像子弹。\n\n你所有的容器都还不够。',
+    opts: [
+      { l: '把帆布、铁皮、鞋子全摊开接雨', s: '淡水 +34 · 体力 -6', run: function (s) { s.water = Math.min(100, s.water + 34); return { msg: '你光着脚在甲板上跑，把每一滴都赶进桶里。' }; } },
+      { l: '先洗个澡，再存水', s: '体力 +16 · 淡水 +18', run: function (s) { s.water = Math.min(100, s.water + 18); return { msg: '雨水从头顶浇下来，冲掉身上的盐壳。你笑出了声。' }; } }
+    ]
+  });
+
+  ev({
+    id: 'drifter', w: function () { return 2.2; },
+    title: '漂过来的人',
+    text: '一个人抱着一块门板漂过来，嘴唇裂开，眼神还清醒。他说他姓什么已经忘了，只记得自己的船沉了两天。\n\n你的水够两个人喝十天。三个人，六天。',
+    opts: [
+      { l: '拉他上来', s: '水 -10 · 之后可能有用', run: function (s) { s.water = Math.max(0, s.water - 10); s.clue += 1; return { msg: '他上船后先喝了一大口，然后哭着说了半张海图的事。' }; } },
+      { l: '给他一壶水，但不让他上船', s: '水 -5', run: function (s) { s.water = Math.max(0, s.water - 5); return { msg: '他接过水，说了句什么，风把它吹散了。' }; } },
+      { l: '不理他，加速离开', s: '无事，但你记得他的脸', run: function () { return { msg: '你背过身去拉帆。他没有喊。' }; } }
+    ]
+  });
+
+  ev({
+    id: 'mud', w: function () { return 1.6; },
+    title: '一小袋土',
+    text: '在一艘翻掉的货船残骸里，你找到一个袋子——干的、黑的、沉的土。\n\n在这个世界上，这比金子重。',
+    opts: [
+      { l: '全部带走', s: '泥土 +2', run: function (s) { s.mud += 2; return { msg: '你把袋子压在舱底最干的地方，摸了好几遍才放心。' }; } },
+      { l: '在袋底种一株找到的芽', s: '泥土 +1 · 食物 +10', run: function (s) { s.mud += 1; s.food = Math.min(100, s.food + 10); return { msg: '你不知道它能不能活，但每天都会去看一眼。' }; } }
+    ]
+  });
+
+  ev({
+    id: 'tide', w: function () { return 1.4; },
+    title: '退潮后的浅滩',
+    text: '海面退下去一大截，露出一条从没见过的沙脊，上面全是贝和卡住的塑料瓶。\n\n沙脊大概只露两小时。',
+    opts: [
+      { l: '冲上去捡', s: '食物 +22 · 体力 -12', run: function (s) { s.food = Math.min(100, s.food + 22); return { msg: '你在沙里翻出成串的贝，还有一只没开封的罐头。' }; } },
+      { l: '把沙脊记进海图', s: '线索 +1', run: function (s) { s.clue += 1; return { msg: '你在图上画了一条线——退潮时，这里能走船。' }; } }
+    ]
+  });
+
+  ev({
+    id: 'memory', w: function () { return 1; },
+    title: '夜里的收音机',
+    text: '你修了半个月的收音机今晚忽然响了，全是杂音，然后有一个女声断断续续地说：\n\n「……北……陆地……跟着鸟……」',
+    opts: [
+      { l: '整夜守着频率', s: '线索 +2 · 体力 -10', run: function (s) { s.clue += 2; return { msg: '你把每个字都写在船板上。天快亮时信号断了，你再也没有听到她的声音。' }; } },
+      { l: '关掉，省电', s: '食物 +2', run: function (s) { s.food += 2; return { msg: '你关掉旋钮，船舱里安静得能听见海。' }; } }
+    ]
+  });
+
+  ev({
+    id: 'pirates2', w: function (s) { return s.clue >= 4 ? 3.2 : 1; },
+    title: '烟者的头船',
+    text: '这一艘太大了，船壳上焊满废铁，挂着一串风干的鱼。它横在你和暖流之间，鸣了三次笛。\n\n对面要你用海图换命。',
+    opts: [
+      { l: '交出海图，换一条通路', s: '线索 -1 · 安全', run: function (s) { s.clue = Math.max(0, s.clue - 1); return { msg: '他们把图卷走，扔给你半桶水和一句「别再往北」。' }; } },
+      { l: '假装投降，夜里摸过去', s: '60% 通过 / 40% 船体 -20', run: function (s) { if (Math.random() < 0.6) { s.clue += 1; return { msg: '你借着夜色贴着他们船底划过去，桨几乎是插进水里不发声的。' }; } s.hull -= 20; return { msg: '探照灯扫过来的一瞬间，你听见了枪声。' }; } },
+      { l: '撞过去', s: '船体 -26 · 但能脱身', run: function (s) { s.hull -= 26; s.clue += 1; return { msg: '你用船头那根铁角顶开了他们的舷侧，两艘船擦出刺耳的声音。' }; } }
+    ]
+  });
+
+  ev({
+    id: 'quiet', w: function () { return 1.2; },
+    title: '没有风的一天',
+    text: '海面平得像一块铁板，帆垂着不动。太阳把甲板晒得能煎鱼。\n\n这种日子最容易让人想事情，也最容易让人脱水。',
+    opts: [
+      { l: '趁静水修整、补帆', s: '船体 +10 · 水 -4', run: function (s) { s.hull = Math.min(100, s.hull + 10); s.water -= 4; return { msg: '你把破洞一个个缝上，缝到太阳落。' }; } },
+      { l: '跳进水里游一会儿', s: '体力 +14 · 有小小的风险', run: function (s) { if (Math.random() < 0.85) return { msg: '水凉得像另一个世界，你在船影里漂了很久。' }; s.hull -= 8; return { msg: '你回到船上时，发现锚链把船壳磨出一道口子。' }; } },
+      { l: '躺着不动，省水', s: '水 -2 · 体力 +6', run: function (s) { s.water -= 2; return { msg: '你在帆影下躺了一天，听见自己的心跳。' }; } }
+    ]
+  });
+
+  ev({
+    id: 'bird', w: function (s) { return s.clue >= 3 ? 3 : 0.8; },
+    title: '一只鸟',
+    text: '一只灰白色的海鸟落在桅杆顶上，歪着头看你。它的脚上还缠着一小截绳子。\n\n鸟不会无缘无故飞到这么远的海上。',
+    opts: [
+      { l: '跟着它飞的方向走', s: '线索 +2 · 水 -6', run: function (s) { s.clue += 2; s.water -= 6; return { msg: '它每天清晨往同一个方向飞，你跟着它走了三天。' }; } },
+      { l: '抓住它，煮了吃', s: '食物 +12', run: function (s) { s.food = Math.min(100, s.food + 12); return { msg: '肉很柴，但你吃得很干净，连骨头都嚼了。' }; } }
+    ]
+  });
+
+  /* --- 终局触发 --- */
+  function finalEvent(s) {
+    return {
+      id: 'final', title: '暖流尽头',
+      text: '海水开始变浅，颜色从墨蓝转成灰绿。第三天清晨，雾里透出一段轮廓——不是船，不是礁，是山。\n\n可烟者的头船也在这时从雾的另一侧压了过来。',
+      opts: [
+        { l: '全速冲向岸边', s: '需要船体 > 25', run: function (st) {
+          if (st.hull > 25) { return { msg: '你听见龙骨刮过沙的声音，然后一头扎进浅水。', win: 'shore' }; }
+          return { msg: '船在离岸几百米的地方散了架。', lose: 'sink' };
+        } },
+        { l: '先解决烟者', s: '需要食物 > 20 且船体 > 40', run: function (st) {
+          if (st.food > 20 && st.hull > 40) { return { msg: '你把油桶滚到船尾，点着了推下去。他们的船在火里转了半圈。', win: 'fire' }; }
+          return { msg: '你太虚弱了，连油桶都推不动。', lose: 'weak' };
+        } }
+      ]
+    };
+  }
+
+  /* ---------------- 状态与渲染 ---------------- */
+  function load() {
+    try {
+      var raw = localStorage.getItem(SAVE_KEY);
+      if (raw) { var o = JSON.parse(raw); if (o && !o.ended) return o; }
+    } catch (e) {}
+    return null;
+  }
+  function save() { try { localStorage.setItem(SAVE_KEY, JSON.stringify(S)); } catch (e) {} }
+
+  var elDay = document.getElementById('day');
+  var elBW = document.getElementById('bw'), elBF = document.getElementById('bf'), elBH = document.getElementById('bh');
+  var elTitle = document.getElementById('title'), elText = document.getElementById('text');
+  var elOpts = document.getElementById('opts'), elLog = document.getElementById('log');
+  var elCard = document.getElementById('card');
+  var elEnd = document.getElementById('end');
+
+  function clamp() {
+    S.water = Math.max(0, Math.min(100, Math.round(S.water)));
+    S.food = Math.max(0, Math.min(100, Math.round(S.food)));
+    S.hull = Math.max(0, Math.min(100, Math.round(S.hull)));
+    S.clue = Math.max(0, Math.min(9, S.clue));
+  }
+
+  function paint() {
+    clamp();
+    elDay.textContent = S.day;
+    elBW.style.width = S.water + '%';
+    elBF.style.width = S.food + '%';
+    elBH.style.width = S.hull + '%';
+    elBW.style.background = S.water < 22 ? 'linear-gradient(90deg,#ff5b5b,#ffa07a)' : '';
+    elBF.style.background = S.food < 22 ? 'linear-gradient(90deg,#ff5b5b,#ffa07a)' : '';
+    elBH.style.background = S.hull < 22 ? 'linear-gradient(90deg,#ff5b5b,#ffa07a)' : '';
+    elLog.innerHTML = S.log.slice(-3).map(function (t) { return '· ' + t; }).join('<br>');
+  }
+
+  function show(evt) {
+    if ('vibrate' in navigator) { try { navigator.vibrate(8); } catch (e) {} }
+    elCard.classList.remove('fade');
+    void elCard.offsetWidth;
+    elCard.classList.add('fade');
+    elTitle.textContent = evt.title;
+    elText.textContent = evt.text;
+    elOpts.innerHTML = '';
+    evt.opts.forEach(function (o) {
+      var b = document.createElement('button');
+      b.className = 'opt';
+      b.innerHTML = '';
+      b.appendChild(document.createTextNode(o.l));
+      if (o.s) { var sm = document.createElement('small'); sm.textContent = o.s; b.appendChild(sm); }
+      b.addEventListener('click', function () { choose(evt, o); });
+      elOpts.appendChild(b);
+    });
+    paint();
+  }
+
+  function pickEvent() {
+    var pool = [], total = 0;
+    EVENTS.forEach(function (e) {
+      var w = typeof e.w === 'function' ? e.w(S) : (e.w || 1);
+      if (w > 0) { pool.push({ e: e, w: w }); total += w; }
+    });
+    var r = Math.random() * total;
+    for (var i = 0; i < pool.length; i++) { r -= pool[i].w; if (r <= 0) return pool[i].e; }
+    return pool[0] ? pool[0].e : EVENTS[0];
+  }
+
+  function upkeep() {
+    S.day += 1;
+    S.water -= 7;
+    S.food -= 6;
+    if (S.day % 6 === 0) S.hull -= 2;
+    clamp();
+    if (S.water <= 0) return finish('death', '渴', '第 ' + S.day + ' 天，水桶见底。你把最后一口倒进嘴里，尝到的是铁锈味。\n\n后来有人在很远的海面上看见一条空船，帆还立着。');
+    if (S.food <= 0) return finish('death', '饿', '第 ' + S.day + ' 天，你把最后一根鱼骨嚼碎咽下去。\n\n海还是那片海，一天比一天轻。');
+    if (S.hull <= 0) return finish('death', '沉', '船壳终于撑不住了。水从四面八方进来，先是脚踝，然后是腰。\n\n你站在桅杆上，看自己的船慢慢沉成一片暗色。');
+    return false;
+  }
+
+  function choose(evt, o) {
+    if (S.died) return;
+    var res;
+    try { res = o.run(S); } catch (e) { res = { msg: '……' }; }
+    clamp();
+    if (res && res.msg) S.log.push(res.msg);
+    paint();
+
+    if (res && res.win) return finish('win', res.win === 'fire' ? '火光里的岸' : '干地', res.win === 'fire'
+      ? '你踩着炭黑的沙滩往上走，身后的海面漂着一层油火。\n\n山坡上有草。真正的草。你跪下去把脸埋进土里，土是热的，有虫在爬。\n\n第 ' + S.day + ' 天，你活下来了。'
+      : '你把船拖上浅滩，走过一片压碎的贝壳，向内陆走了半公里。\n\n有溪水，有野生的果树，有鸟在低处叫。\n\n第 ' + S.day + ' 天。你在干燥的土地上睡了一觉，醒来时没有听见海。');
+    if (res && res.lose) return finish('death', '最后一段', res.lose === 'sink'
+      ? '船在你脚下散成木头。你抓着一块甲板游了很远，直到再也抬不起手臂。\n\n陆地就在几百米外，你看见了。'
+      : '你没有力气了。烟者靠过来，看了一眼你的眼睛，然后把船掉头开走。\n\n海面重新安静下来。');
+
+    if (upkeep()) return;
+    save();
+
+    if (S.clue >= 5) {
+      if (S.clue >= 6 || Math.random() < (S.clue - 4) / 3) { show(finalEvent(S)); return; }
+    }
+    show(pickEvent());
+  }
+
+  function finish(kind, title, text) {
+    S.ended = true;
+    save();
+    document.getElementById('endTag').textContent = kind === 'win' ? '抵达' : '终局';
+    document.getElementById('endTitle').textContent = title;
+    document.getElementById('endText').textContent = text;
+    elEnd.classList.add('on');
+    if ('vibrate' in navigator) { try { navigator.vibrate(kind === 'win' ? [30, 60, 30] : 60); } catch (e) {} }
+  }
+
+  function start() {
+    S = newState();
+    localStorage.removeItem(SAVE_KEY);
+    elEnd.classList.remove('on');
+    show({ title: '浮世', text: '你是在三体船的甲板上醒来的。\n\n天是灰的，海是灰的，只有风是干净的。三年前最后一块大陆沉下去的时候，你还在北边。\n\n听说有「干地」——一块还没被水吃掉的高地。没有人见过，但每个人都在往北走。\n\n你有水、有鱼线、有一条缝了又缝的船。', opts: [
+      { l: '起航。往北。', s: '开始求生', run: function () { return { msg: '你把帆拉起来，船头慢慢对准了北方。' }; } }
+    ] });
+    paint();
+  }
+
+  document.getElementById('again').addEventListener('click', start);
+
+  /* ---------------- 背景海面 ---------------- */
+  var cv = document.getElementById('sea'), ctx = cv.getContext('2d');
+  var W, H, stars = [];
+  function resize() {
+    W = cv.width = window.innerWidth * devicePixelRatio;
+    H = cv.height = window.innerHeight * devicePixelRatio;
+    cv.style.width = window.innerWidth + 'px';
+    cv.style.height = window.innerHeight + 'px';
+    stars = [];
+    for (var i = 0; i < 60; i++) stars.push({ x: Math.random() * W, y: Math.random() * H * 0.55, r: Math.random() * 1.1 * devicePixelRatio, a: Math.random() });
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  var t0 = performance.now();
+  function draw(now) {
+    var t = (now - t0) / 1000;
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#050a14');
+    g.addColorStop(0.45, '#0a1628');
+    g.addColorStop(0.72, '#0d2038');
+    g.addColorStop(1, '#081420');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(180,220,255,.5)';
+    stars.forEach(function (s) {
+      var a = 0.25 + 0.6 * Math.abs(Math.sin(t * 0.7 + s.a * 9));
+      ctx.globalAlpha = a * 0.6;
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.283); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    var hy = H * 0.62;
+    for (var k = 0; k < 5; k++) {
+      ctx.beginPath();
+      ctx.moveTo(0, hy + k * 12 * devicePixelRatio);
+      for (var x = 0; x <= W; x += 12 * devicePixelRatio) {
+        var y = hy + k * 12 * devicePixelRatio + Math.sin(x * 0.004 + t * (0.6 + k * 0.12) + k) * (5 + k * 2) * devicePixelRatio;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+      ctx.fillStyle = 'rgba(10,26,44,' + (0.16 + k * 0.14) + ')';
+      ctx.fill();
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+
+  /* ---------------- 启动 ---------------- */
+  var saved = load();
+  if (saved) {
+    S = saved;
+    paint();
+    show({ title: '继续', text: '海还在。你上次停在这里。', opts: [
+      { l: '继续航行', s: '第 ' + S.day + ' 天', run: function () { return { msg: '你把帆重新升起来。' }; } },
+      { l: '从头开始', s: '清空存档', run: function () { setTimeout(start, 0); return { msg: '' }; } }
+    ] });
+  } else {
+    start();
+  }
+})();
+</script>
+</body>
+</html>
