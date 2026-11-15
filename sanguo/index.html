@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>三国 · 卡牌争霸</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:#0b0806}
+body{font-family:"Songti SC","STSong","SimSun",Georgia,serif;color:#e8ddc8;user-select:none}
+#app{position:relative;width:100%;height:100%;max-width:520px;margin:0 auto;overflow:hidden;
+  background:
+   radial-gradient(circle at 50% 8%,rgba(200,162,74,.10),transparent 52%),
+   radial-gradient(circle at 50% 96%,rgba(168,51,42,.14),transparent 58%),
+   linear-gradient(#1d1611,#100c09);
+  display:flex;flex-direction:column}
+#scene{position:absolute;inset:0;display:flex;flex-direction:column;padding:6px 8px 8px}
+
+/* ---------- 主公栏 ---------- */
+.herobar{display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:10px;
+  background:linear-gradient(180deg,rgba(58,42,29,.92),rgba(28,20,14,.92));
+  border:1px solid rgba(200,162,74,.35);box-shadow:inset 0 1px 0 rgba(255,225,170,.10),0 2px 8px rgba(0,0,0,.5)}
+.herobar.foe{border-color:rgba(168,51,42,.45)}
+.por{flex:0 0 auto;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:22px;color:#f0e0b8;background:radial-gradient(circle at 34% 28%,#5a4630,#241a12);
+  border:1px solid rgba(200,162,74,.55);text-shadow:0 0 8px rgba(240,200,120,.45)}
+.herobar.foe .por{background:radial-gradient(circle at 34% 28%,#5c2a24,#20100d);border-color:rgba(220,120,90,.5)}
+.hinfo{flex:1 1 auto;min-width:0}
+.hline{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.hn{font-size:14px;letter-spacing:2px;color:#f2e4c0}
+.hstat{font-size:12px;color:#c9a86a;font-variant-numeric:tabular-nums}
+.bar{height:7px;border-radius:4px;background:rgba(0,0,0,.55);overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.7)}
+.bar>i{display:block;height:100%;width:100%;border-radius:4px;transition:width .32s ease;
+  background:linear-gradient(90deg,#8d2b22,#d4553f)}
+.herobar.me .bar>i{background:linear-gradient(90deg,#3f7a4a,#6fbf7a)}
+.armorTag{flex:0 0 auto;font-size:11px;color:#bfd8ff;border:1px solid rgba(150,190,255,.45);
+  border-radius:8px;padding:2px 6px;background:rgba(40,70,110,.35)}
+
+/* ---------- 战场 ---------- */
+.rank{display:flex;justify-content:center;align-items:flex-end;gap:6px;min-height:96px}
+.zone-foe{align-self:stretch;display:flex;flex-direction:column;gap:6px}
+.zone-me{align-self:stretch;display:flex;flex-direction:column;gap:6px}
+
+.unit{position:relative;width:66px;height:84px;flex:0 0 auto;border-radius:8px;cursor:pointer;
+  background:linear-gradient(165deg,#3c2c1e,#211710);border:1px solid rgba(200,162,74,.5);
+  box-shadow:0 3px 9px rgba(0,0,0,.55);transition:transform .16s,box-shadow .16s,border-color .16s;
+  display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  padding:4px 3px 14px;overflow:hidden}
+.unit.foe{border-color:rgba(200,90,70,.5);cursor:default}
+.unit .uf{width:100%;flex:1 1 auto;border-radius:5px;overflow:hidden;opacity:.95}
+.unit .un{font-size:10px;letter-spacing:1px;color:#e6d6ae;margin-top:2px;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.unit .us{position:absolute;left:0;right:0;bottom:0;height:16px;display:flex;align-items:center;justify-content:space-between;
+  padding:0 5px;background:rgba(10,7,5,.75);font-size:11px;font-variant-numeric:tabular-nums}
+.unit .us b{color:#ffcf6b}
+.unit .us i{color:#ff8f7a;font-style:normal}
+.unit.spent{filter:grayscale(.72) brightness(.72);cursor:default}
+.unit.sel{transform:translateY(-6px);border-color:#ffd97a;box-shadow:0 0 0 2px rgba(255,217,122,.55),0 6px 14px rgba(0,0,0,.6)}
+.unit.hot{border-color:#ff9a6b;box-shadow:0 0 0 2px rgba(255,140,90,.45),0 0 16px rgba(255,120,60,.35)}
+.unit.taunt::after{content:"";position:absolute;inset:0;border-radius:8px;
+  box-shadow:inset 0 0 0 2px rgba(150,190,255,.45);pointer-events:none}
+
+/* ---------- 日志 ---------- */
+.log{flex:1 1 auto;margin:7px 0;padding:5px 9px;overflow:hidden;font-size:11.5px;line-height:1.65;
+  color:#a5907a;display:flex;flex-direction:column;justify-content:flex-end;
+  border-top:1px solid rgba(200,162,74,.16);border-bottom:1px solid rgba(200,162,74,.16);
+  background:linear-gradient(180deg,rgba(0,0,0,.22),rgba(0,0,0,.05))}
+.log div{opacity:.72}
+.log div:last-child{opacity:1;color:#e2cfa4}
+
+/* ---------- 手牌 ---------- */
+.handwrap{flex:0 0 auto}
+.hand{display:flex;justify-content:center;align-items:flex-end;height:112px;padding:0 2px}
+.hcard{position:relative;width:68px;height:104px;flex:0 0 auto;border-radius:7px;cursor:pointer;
+  background:linear-gradient(168deg,#40301f,#221810);border:1px solid rgba(200,162,74,.55);
+  box-shadow:0 3px 9px rgba(0,0,0,.55);transition:transform .16s,box-shadow .16s,opacity .16s;
+  display:flex;flex-direction:column;overflow:hidden}
+.hcard+.hcard{margin-left:-19px}
+.hcard:nth-child(1){z-index:1}.hcard:nth-child(2){z-index:2}.hcard:nth-child(3){z-index:3}
+.hcard:nth-child(4){z-index:4}.hcard:nth-child(5){z-index:5}.hcard:nth-child(6){z-index:6}
+.hcard:nth-child(7){z-index:7}.hcard:nth-child(8){z-index:8}
+.hcard.playable{border-color:rgba(255,209,102,.75)}
+.hcard.dead{opacity:.45;filter:grayscale(.7)}
+.hcard.sel{transform:translateY(-16px);z-index:20;box-shadow:0 0 0 2px rgba(255,217,122,.6),0 10px 20px rgba(0,0,0,.65)}
+.cost{position:absolute;top:-1px;left:-1px;width:20px;height:20px;border-radius:7px 0 7px 0;
+  display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:400;
+  color:#1a1208;background:linear-gradient(160deg,#f0cf7c,#c09a3e);font-variant-numeric:tabular-nums}
+.hcard.spell .cost{background:linear-gradient(160deg,#a8c8e8,#6a94b8)}
+.cart{flex:1 1 auto;overflow:hidden;opacity:.92}
+.cname{font-size:10.5px;letter-spacing:.5px;text-align:center;padding:1px 2px 2px;color:#ecdcb4;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cstat{position:absolute;left:0;right:0;bottom:0;display:flex;justify-content:space-between;padding:1px 5px;
+  font-size:11px;background:rgba(10,7,5,.8);font-variant-numeric:tabular-nums}
+.cstat b{color:#ffcf6b}.cstat i{color:#ff8f7a;font-style:normal}
+.ctyp{position:absolute;right:2px;top:2px;font-size:9px;color:#c9a86a;opacity:.9}
+
+.ctrl{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 4px 2px}
+.mana{font-size:13px;letter-spacing:1px;color:#f0cf7c;font-variant-numeric:tabular-nums;
+  border:1px solid rgba(240,207,124,.45);border-radius:9px;padding:3px 11px;background:rgba(60,44,26,.6)}
+.mana.wait{color:#7d7266;border-color:rgba(125,114,102,.4)}
+#endBtn{font-family:inherit;font-size:13.5px;letter-spacing:2px;color:#f6e6bd;cursor:pointer;
+  padding:7px 20px;border-radius:9px;border:1px solid rgba(200,162,74,.6);
+  background:linear-gradient(180deg,#7a2c22,#4d1a13);box-shadow:inset 0 1px 0 rgba(255,200,160,.18),0 3px 8px rgba(0,0,0,.5)}
+#endBtn:active{transform:translateY(1px)}
+#endBtn:disabled{opacity:.4;cursor:default}
+
+/* ---------- 封面 / 结局 ---------- */
+.cover{position:absolute;inset:0;z-index:60;display:none;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:26px;background:radial-gradient(circle at 50% 34%,rgba(60,42,26,.94),rgba(8,6,4,.98));
+  -webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)}
+.cover.show{display:flex}
+.cover h1{font-size:30px;letter-spacing:8px;color:#f0d79a;text-shadow:0 0 22px rgba(240,200,110,.35);
+  margin-bottom:10px;font-weight:400}
+.cover .sub{font-size:12.5px;letter-spacing:3px;color:#a9906a;margin-bottom:26px}
+.cover .body{font-size:12.5px;line-height:2;color:#c4ad86;max-width:330px;margin-bottom:26px}
+.cover button{font-family:inherit;font-size:15px;letter-spacing:4px;color:#f8ebc8;cursor:pointer;
+  padding:11px 36px;border-radius:11px;border:1px solid rgba(200,162,74,.65);
+  background:linear-gradient(180deg,#8a3126,#521c15);box-shadow:inset 0 1px 0 rgba(255,200,160,.2),0 5px 14px rgba(0,0,0,.6)}
+.cover button:active{transform:translateY(1px)}
+.seal{width:56px;height:56px;border-radius:4px;border:2px solid rgba(200,70,50,.85);color:#e06a52;
+  display:flex;align-items:center;justify-content:center;font-size:13px;letter-spacing:1px;
+  line-height:1.15;margin-bottom:18px;transform:rotate(-4deg);writing-mode:vertical-rl;
+  background:rgba(180,50,36,.08)}
+
+/* ---------- 提示 ---------- */
+#toast{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);z-index:80;pointer-events:none;
+  padding:8px 18px;border-radius:9px;font-size:12.5px;letter-spacing:1px;color:#f4e6c4;
+  background:rgba(20,14,9,.94);border:1px solid rgba(200,162,74,.5);opacity:0;transition:opacity .2s}
+#toast.on{opacity:1}
+
+#muteBtn{position:absolute;right:8px;top:calc(100% - 158px);z-index:40;width:26px;height:26px;border-radius:50%;
+  display:none;align-items:center;justify-content:center;font-size:13px;color:#c9a86a;cursor:pointer;
+  border:1px solid rgba(200,162,74,.4);background:rgba(24,18,12,.82)}
+#muteBtn.on{display:flex}
+#muteBtn.off{color:#6d6459;border-color:rgba(109,100,89,.35)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="scene">
+    <div class="zone-foe">
+      <div class="herobar foe">
+        <div class="por" id="foePor"></div>
+        <div class="hinfo">
+          <div class="hline"><span class="hn" id="foeName">—</span><span class="hstat" id="foeStat">0 / 0</span></div>
+          <div class="bar"><i id="foeBar"></i></div>
+        </div>
+      </div>
+      <div class="rank" id="foeField"></div>
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <div class="zone-me">
+      <div class="rank" id="myField"></div>
+      <div class="herobar me">
+        <div class="por">刘</div>
+        <div class="hinfo">
+          <div class="hline"><span class="hn">刘备</span><span class="hstat" id="myStat">30 / 30</span></div>
+          <div class="bar"><i id="myBar"></i></div>
+        </div>
+        <div class="armorTag" id="armorTag" style="display:none">甲 0</div>
+      </div>
+    </div>
+
+    <div class="handwrap">
+      <div class="hand" id="hand"></div>
+      <div class="ctrl">
+        <div class="mana" id="mana">令 1 / 1</div>
+        <button id="endBtn">结束回合</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="muteBtn">♪</div>
+
+  <div id="cover" class="cover show">
+    <div class="seal">汉室<br>将倾</div>
+    <h1>三国 · 卡牌争霸</h1>
+    <div class="sub">桃园结义 · 一统山河</div>
+    <div class="body" id="coverBody">出牌要花「令」，武将上场后点它、再点敌方武将或主公发起进攻。五关，五场恶战。</div>
+    <button id="startBtn">桃园结义</button>
+  </div>
+  <div id="toast"></div>
+</div>
+<script>
+(function(){
+'use strict';
+
+/* ==================== 卡牌数据 ==================== */
+var DB = {
+  liaohua:   {n:'廖化',   c:1, t:'gen', a:2, h:1, kw:[], d:'蜀中先锋'},
+  weiyan:    {n:'魏延',   c:2, t:'gen', a:3, h:2, kw:[], d:'奇谋'},
+  zhangfei:  {n:'张飞',   c:3, t:'gen', a:4, h:3, kw:['据守'], d:'据守：敌方须先攻击他'},
+  huatuo:    {n:'华佗',   c:2, t:'gen', a:1, h:4, kw:['医术'], d:'医术：每回合主公回复2点'},
+  huangzhong:{n:'黄忠',   c:3, t:'gen', a:3, h:3, kw:['远射'], d:'远射：攻击时不受伤害'},
+  zhugeliang:{n:'诸葛亮', c:3, t:'gen', a:2, h:4, kw:['智谋'], d:'智谋：每回合抽1张牌'},
+  guanyu:    {n:'关羽',   c:4, t:'gen', a:5, h:4, kw:['突袭'], d:'突袭：上场即可攻击'},
+  zhaoyun:   {n:'赵云',   c:4, t:'gen', a:4, h:5, kw:['突袭'], d:'突袭：上场即可攻击'},
+
+  huoji:     {n:'火计',   c:2, t:'spell', d:'敌方所有武将受2点伤害'},
+  jianyu:    {n:'箭雨',   c:1, t:'spell', d:'对敌方主公造成4点伤害'},
+  taoyuan:   {n:'桃园结义', c:3, t:'spell', d:'己方所有武将 +1/+1'},
+  kongcheng: {n:'空城计', c:1, t:'spell', d:'获得4点护甲'},
+  guaguo:    {n:'刮骨疗毒', c:1, t:'spell', d:'主公回复6点体力'},
+  jidongfeng:{n:'借东风', c:2, t:'spell', d:'抽2张牌'},
+
+  zhangjiao: {n:'张角',   c:3, t:'gen', a:3, h:3, kw:[], d:'天公将军'},
+  huangjin:  {n:'黄巾力士', c:2, t:'gen', a:2, h:3, kw:[], d:'苍天已死'},
+  lvbu:      {n:'吕布',   c:5, t:'gen', a:6, h:4, kw:['突袭'], d:'人中吕布'},
+  xiahoudun: {n:'夏侯惇', c:3, t:'gen', a:3, h:4, kw:['据守'], d:'据守'},
+  zhangliao: {n:'张辽',   c:4, t:'gen', a:4, h:4, kw:[], d:'威震逍遥津'},
+  xuchu:     {n:'许褚',   c:3, t:'gen', a:4, h:3, kw:[], d:'虎痴'},
+  zhouyu:    {n:'周瑜',   c:3, t:'gen', a:2, h:4, kw:['智谋'], d:'智谋'},
+  simayi:    {n:'司马懿', c:4, t:'gen', a:3, h:5, kw:['智谋'], d:'鹰视狼顾'},
+  jixi:      {n:'急袭',   c:1, t:'spell', d:'对敌方主公造成3点伤害'},
+  luanshi:   {n:'乱世',   c:2, t:'spell', d:'对敌方主公造成3点伤害'}
+};
+
+/* ==================== 章节 ==================== */
+var CH = [
+  {n:'黄巾之乱', boss:'张角', hp:22,
+   deck:['huangjin','huangjin','zhangjiao','huangjin','jixi','huangjin','huangjin'],
+   win:'黄巾既破，张角伏诛。中原稍定，可虎牢关前，一骑赤兔正等着你。',
+   add:'zhaoyun'},
+  {n:'虎牢关', boss:'吕布', hp:28,
+   deck:['lvbu','huangjin','xuchu','jixi','zhangliao','huangjin'],
+   win:'吕布败走，虎牢关开。三军鼓噪，声震四野。',
+   add:'zhugeliang'},
+  {n:'官渡之战', boss:'袁绍', hp:32,
+   deck:['xuchu','xuchu','zhangliao','xiahoudun','jixi','jixi','xuchu'],
+   win:'袁绍大营火起，河北军溃。北方之地，入我囊中。',
+   add:'taoyuan'},
+  {n:'赤壁之战', boss:'曹操', hp:36,
+   deck:['zhangliao','xiahoudun','xuchu','zhouyu','jixi','huoji','zhangliao'],
+   win:'东风一起，赤壁火连天。曹军八十万，灰飞烟灭。',
+   add:'guanyu'},
+  {n:'五丈原', boss:'司马懿', hp:42,
+   deck:['simayi','simayi','xuchu','zhangliao','xiahoudun','luanshi','luanshi','simayi'],
+   win:'司马懿退兵。长安道上，再无阻碍。',
+   add:null}
+];
+
+/* ==================== 状态 ==================== */
+var S = {
+  chapter:0, hp:32, maxHp:32, armor:0,
+  deckBuild:[], deck:[], hand:[], discard:[],
+  field:[], sel:-1,
+  foeName:'', foeHp:0, foeMaxHp:0, foeArmor:0,
+  foeField:[], foeDeck:[], foeHand:[],
+  turn:0, mana:0, maxMana:0,
+  phase:'idle', busy:false, foeActed:0,
+  log:[]
+};
+
+var STARTER = ['liaohua','liaohua','weiyan','weiyan','zhangfei','zhangfei',
+  'huatuo','huatuo','huangzhong','huangzhong','huoji','huoji','jianyu','jianyu',
+  'kongcheng','kongcheng','guaguo','guaguo','jidongfeng'];
+
+/* ==================== 工具 ==================== */
+function $(id){ return document.getElementById(id); }
+function rnd(n){ return Math.floor(Math.random()*n); }
+function shuffle(a){
+  for(var i=a.length-1;i>0;i--){ var j=rnd(i+1); var t=a[i]; a[i]=a[j]; a[j]=t; }
+  return a;
+}
+var toastT=null;
+function toast(msg){
+  var el=$('toast'); el.textContent=msg; el.classList.add('on');
+  clearTimeout(toastT);
+  toastT=setTimeout(function(){ el.classList.remove('on'); }, 1100);
+}
+function log(msg){
+  S.log.push(msg);
+  if(S.log.length>30) S.log.shift();
+}
+function face(id){
+  var sum=0;
+  for(var i=0;i<id.length;i++) sum=(sum*31+id.charCodeAt(i))%360;
+  var h=sum, h2=(h+38)%360;
+  return '<svg viewBox="0 0 60 60" preserveAspectRatio="xMidYMid slice" style="width:100%;height:100%;display:block">'
+    +'<defs><linearGradient id="g'+id+'" x1="0" y1="0" x2="0" y2="1">'
+    +'<stop offset="0" stop-color="hsl('+h+',22%,20%)"/><stop offset="1" stop-color="hsl('+h2+',18%,11%)"/>'
+    +'</linearGradient></defs>'
+    +'<rect width="60" height="60" fill="url(#g'+id+')"/>'
+    +'<path d="M12 31 Q30 3 48 31 L46 26 Q30 12 14 26 Z" fill="hsl('+h+',30%,44%)"/>'
+    +'<path d="M16 30 Q30 18 44 30 L44 33 Q30 24 16 33 Z" fill="hsl('+h+',24%,30%)"/>'
+    +'<circle cx="30" cy="37" r="13" fill="hsl('+h+',26%,32%)"/>'
+    +'<path d="M24 34 q3 -2 6 0" stroke="hsl('+h+',18%,16%)" stroke-width="1.6" fill="none" stroke-linecap="round"/>'
+    +'<path d="M33 34 q3 -2 6 0" stroke="hsl('+h+',18%,16%)" stroke-width="1.6" fill="none" stroke-linecap="round"/>'
+    +'<path d="M27 44 q3 2 6 0" stroke="hsl('+h+',18%,16%)" stroke-width="1.4" fill="none" stroke-linecap="round"/>'
+    +'<rect x="25" y="50" width="10" height="10" fill="hsl('+h+',18%,22%)"/>'
+    +'<path d="M10 60 Q30 46 50 60 Z" fill="hsl('+h+',30%,26%)"/>'
+    +'</svg>';
+}
+
+/* ==================== 音效 ==================== */
+var AC=null, MG=null, muted=false;
+try{ muted = localStorage.getItem('sg_mute')==='1'; }catch(e){}
+function initAudio(){
+  if(AC) return;
+  try{
+    var C = window.AudioContext || window.webkitAudioContext;
+    if(!C) return;
+    AC = new C();
+    MG = AC.createGain();
+    MG.gain.value = muted?0:0.10;
+    MG.connect(AC.destination);
+    if(AC.state==='suspended'){ AC.resume(); }
+    startBGM();
+  }catch(e){ AC=null; }
+}
+var bgmTimer=null;
+function startBGM(){
+  if(!AC || bgmTimer) return;
+  var scale=[293.66,329.63,369.99,440.00,493.88,587.33];
+  var step=0;
+  bgmTimer=setInterval(function(){
+    if(!AC || muted || S.phase==='idle') return;
+    var f=scale[rnd(scale.length)];
+    if(rnd(10)<3) f=scale[rnd(scale.length)];
+    var t=AC.currentTime;
+    try{
+      var o=AC.createOscillator(), g=AC.createGain();
+      o.type='triangle'; o.frequency.value=f;
+      g.gain.setValueAtTime(0.0001,t);
+      g.gain.exponentialRampToValueAtTime(0.30,t+0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001,t+1.5);
+      o.connect(g); g.connect(MG);
+      o.start(t); o.stop(t+1.6);
+      if(rnd(3)===0){
+        var o2=AC.createOscillator(), g2=AC.createGain();
+        o2.type='sine'; o2.frequency.value=f/2;
+        g2.gain.setValueAtTime(0.0001,t);
+        g2.gain.exponentialRampToValueAtTime(0.18,t+0.05);
+        g2.gain.exponentialRampToValueAtTime(0.0001,t+2.2);
+        o2.connect(g2); g2.connect(MG);
+        o2.start(t); o2.stop(t+2.3);
+      }
+    }catch(e){}
+    step++;
+  }, 2100);
+}
+function sfx(kind){
+  if(!AC || muted) return;
+  try{
+    var t=AC.currentTime, o=AC.createOscillator(), g=AC.createGain();
+    if(kind==='hit'){ o.type='square'; o.frequency.setValueAtTime(180,t);
+      o.frequency.exponentialRampToValueAtTime(60,t+0.16);
+      g.gain.setValueAtTime(0.22,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.18); o.start(t); o.stop(t+0.2); }
+    else if(kind==='hurt'){ o.type='sawtooth'; o.frequency.setValueAtTime(120,t);
+      o.frequency.exponentialRampToValueAtTime(46,t+0.24);
+      g.gain.setValueAtTime(0.20,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.26); o.start(t); o.stop(t+0.28); }
+    else if(kind==='card'){ o.type='triangle'; o.frequency.setValueAtTime(720,t);
+      o.frequency.exponentialRampToValueAtTime(420,t+0.1);
+      g.gain.setValueAtTime(0.14,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.12); o.start(t); o.stop(t+0.14); }
+    else if(kind==='win'){ o.type='triangle'; o.frequency.setValueAtTime(440,t);
+      o.frequency.setValueAtTime(587,t+0.12); o.frequency.setValueAtTime(740,t+0.24);
+      g.gain.setValueAtTime(0.16,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.7); o.start(t); o.stop(t+0.72); }
+    else { o.type='sine'; o.frequency.value=330;
+      g.gain.setValueAtTime(0.10,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.14); o.start(t); o.stop(t+0.16); }
+    o.connect(g); g.connect(MG);
+  }catch(e){}
+}
+
+/* ==================== 抽牌 ==================== */
+function draw(n){
+  for(var i=0;i<n;i++){
+    if(S.hand.length>=8){ log('手牌已满，'+(S.discard.length?'':'')+'牌弃入牌堆'); continue; }
+    if(!S.deck.length){
+      if(!S.discard.length) return;
+      S.deck = shuffle(S.discard.slice());
+      S.discard = [];
+      log('牌堆已尽，旧牌重洗。');
+    }
+    S.hand.push(S.deck.pop());
+  }
+}
+function foeDraw(n){
+  for(var i=0;i<n;i++){
+    if(S.foeHand.length>=8) continue;
+    if(!S.foeDeck.length){
+      if(!S.foeUsed || !S.foeUsed.length) return;
+      S.foeDeck = shuffle(S.foeUsed.slice());
+      S.foeUsed = [];
+    }
+    S.foeHand.push(S.foeDeck.pop());
+  }
+}
+
+/* ==================== 渲染 ==================== */
+function render(){
+  $('foeName').textContent = S.foeName || '—';
+  $('foeStat').textContent = Math.max(0,S.foeHp) + ' / ' + S.foeMaxHp;
+  $('foeBar').style.width = (S.foeMaxHp>0 ? Math.max(0, Math.min(100, S.foeHp/S.foeMaxHp*100)) : 0) + '%';
+  $('foePor').textContent = (S.foeName||'？').charAt(0);
+
+  $('myStat').textContent = Math.max(0,S.hp) + ' / ' + S.maxHp;
+  $('myBar').style.width = (S.maxHp>0 ? Math.max(0, Math.min(100, S.hp/S.maxHp*100)) : 0) + '%';
+  var at = $('armorTag');
+  if(S.armor>0){ at.style.display=''; at.textContent = '甲 ' + S.armor; }
+  else { at.style.display='none'; }
+
+  // 场上武将
+  var fh='';
+  for(var i=0;i<S.foeField.length;i++) fh += unitHTML(S.foeField[i], i, 'foe');
+  $('foeField').innerHTML = fh;
+
+  var mh='';
+  for(var j=0;j<S.field.length;j++) mh += unitHTML(S.field[j], j, 'me');
+  $('myField').innerHTML = mh;
+
+  // 手牌
+  var hh='';
+  for(var k=0;k<S.hand.length;k++){
+    var id=S.hand[k], c=DB[id];
+    var ok = (S.phase==='play' && c.c<=S.mana && !S.busy);
+    var cls = 'hcard' + (c.t==='spell'?' spell':'') + (ok?' playable':' dead') + (S.handSel===k?' sel':'');
+    hh += '<div class="'+cls+'" data-hand="'+k+'">'
+      + '<div class="cost">'+c.c+'</div>'
+      + (c.t==='spell' ? '<div class="ctyp">计</div>' : '')
+      + '<div class="cart">'+face(id)+'</div>'
+      + '<div class="cname">'+c.n+'</div>'
+      + (c.t==='gen' ? '<div class="cstat"><b>'+c.a+'</b><i>'+c.h+'</i></div>' : '<div class="cstat"><b>计</b><i></i></div>')
+      + '</div>';
+  }
+  $('hand').innerHTML = hh;
+
+  $('mana').textContent = '令 ' + S.mana + ' / ' + S.maxMana;
+  $('mana').className = 'mana' + (S.phase!=='play'?' wait':'');
+  $('endBtn').disabled = (S.phase!=='play' || S.busy);
+
+  var lg='';
+  var tail = S.log.slice(-6);
+  for(var m=0;m<tail.length;m++) lg += '<div>'+tail[m]+'</div>';
+  $('log').innerHTML = lg;
+
+  $('muteBtn').className = (muted?'off':'') + (AC?' on':'');
+}
+
+function unitHTML(u, i, side){
+  var c=DB[u.id];
+  var cls='unit'+(side==='foe'?' foe':'')+(u.canAtk?'':' spent')+(side==='me'&&S.sel===i?' sel':'');
+  if(side==='me'&&S.sel>=0) cls+=' hot';
+  var attr = side==='foe' ? 'data-foe="'+i+'"' : 'data-me="'+i+'"';
+  var kwCls = (c.kw && c.kw.indexOf('据守')>=0) ? ' taunt' : '';
+  return '<div class="'+cls+'" '+attr+'>'
+    + '<div class="uf">'+face(u.id)+'</div>'
+    + '<div class="un">'+c.n+'</div>'
+    + '<div class="us"><b>'+u.atk+'</b><i>'+u.hp+'</i></div>'
+    + '</div>';
+}
+
+/* ==================== 伤害 ==================== */
+function healMe(n){
+  var before=S.hp;
+  S.hp=Math.min(S.maxHp,S.hp+n);
+  if(S.hp>before) log('主公回复 '+(S.hp-before)+' 点体力。');
+}
+function hitMe(n){
+  if(n<=0) return;
+  var left=n;
+  if(S.armor>0){
+    var use=Math.min(S.armor,left);
+    S.armor-=use; left-=use;
+    if(use>0) log('护甲挡下 '+use+' 点。');
+  }
+  if(left>0){ S.hp-=left; log('主公受到 '+left+' 点伤害。'); }
+  if(S.hp<=0){ S.hp=0; S.phase='over'; render(); setTimeout(loseGame,320); return true; }
+  return false;
+}
+function hitFoe(n){
+  if(n<=0) return;
+  S.foeHp-=n;
+  log((S.foeName||'敌方')+' 受到 '+n+' 点伤害。');
+  if(S.foeHp<=0){ S.foeHp=0; S.phase='over'; render(); setTimeout(winChapter,320); return true; }
+  return false;
+}
+
+/* ==================== 回合 ==================== */
+function beginChapter(i){
+  var ch=CH[i];
+  S.chapter=i;
+  S.foeName=ch.boss;
+  S.foeMaxHp=ch.hp; S.foeHp=ch.hp; S.foeArmor=0;
+  S.foeField=[]; S.foeUsed=[];
+  S.foeDeck=shuffle(ch.deck.slice());
+  S.foeHand=[];
+  S.armor=0;
+  S.field=[]; S.hand=[]; S.discard=[];
+  S.deck=shuffle(S.deckBuild.slice());
+  S.turn=0; S.mana=0; S.maxMana=0;
+  S.sel=-1; S.handSel=-1; S.busy=false; S.phase='play'; S.foeActed=0;
+  S.endShown=false;
+  S.log=[];
+  log('—— 第 '+(i+1)+' 战 · '+ch.n+' ——');
+  log('敌将 '+(ch.boss)+' 率军而来，血战在即。');
+  draw(4);
+  $('cover').classList.remove('show');
+  $('muteBtn').className = (muted?'off':'') + (AC?' on':'');
+  nextTurn(true);
+}
+
+function nextTurn(first){
+  S.turn++;
+  S.maxMana=Math.min(S.turn,10);
+  S.mana=S.maxMana;
+  S.sel=-1; S.handSel=-1;
+  for(var i=0;i<S.field.length;i++) S.field[i].canAtk=true;
+  // 回合开始的武将效果
+  for(var j=S.field.length-1;j>=0;j--){
+    var u=S.field[j], c=DB[u.id];
+    if(c.kw.indexOf('医术')>=0) healMe(2);
+    if(c.kw.indexOf('智谋')>=0) draw(1);
+  }
+  if(!first) draw(1);
+  if(S.phase!=='over') S.phase='play';
+  render();
+}
+
+/* ==================== 出牌 ==================== */
+function canPlay(i){
+  if(S.phase!=='play'||S.busy) return false;
+  var id=S.hand[i];
+  if(id===undefined) return false;
+  return DB[id].c<=S.mana;
+}
+
+function playHand(i){
+  if(!canPlay(i)){ 
+    if(S.phase==='play'&&!S.busy) toast('令不够');
+    return false;
+  }
+  var id=S.hand[i], c=DB[id];
+  if(c.t==='gen' && S.field.length>=3){ toast('战场最多三位武将'); return false; }
+
+  S.hand.splice(i,1);
+  S.mana-=c.c;
+  S.handSel=-1;
+  sfx('card');
+
+  if(c.t==='gen'){
+    var u={ id:id, atk:c.a, hp:c.h, maxHp:c.h,
+      canAtk: (c.kw.indexOf('突袭')>=0),
+      taunt: (c.kw.indexOf('据守')>=0) };
+    S.field.push(u);
+    log('【'+c.n+'】上场，'+u.atk+'/'+u.hp+'。');
+  } else {
+    S.discard.push(id);
+    castSpell(id);
+  }
+  render();
+  return true;
+}
+
+function castSpell(id){
+  var c=DB[id];
+  if(id==='huoji'){
+    log('【火计】烈焰席卷敌阵。');
+    for(var i=S.foeField.length-1;i>=0;i--){
+      S.foeField[i].hp-=2;
+      if(S.foeField[i].hp<=0){ log('敌方【'+DB[S.foeField[i].id].n+'】阵亡。'); S.foeField.splice(i,1); }
+    }
+    sfx('hurt');
+  } else if(id==='jianyu'){
+    log('【箭雨】万箭齐发。');
+    sfx('hurt');
+    hitFoe(4);
+  } else if(id==='taoyuan'){
+    log('【桃园结义】兄弟齐心。');
+    for(var j=0;j<S.field.length;j++){ S.field[j].atk+=1; S.field[j].hp+=1; S.field[j].maxHp+=1; }
+    sfx('card');
+  } else if(id==='kongcheng'){
+    S.armor+=4;
+    log('【空城计】获得 4 点护甲。');
+    sfx('card');
+  } else if(id==='guaguo'){
+    healMe(6);
+    sfx('card');
+  } else if(id==='jidongfeng'){
+    draw(2);
+    log('【借东风】抽了两张牌。');
+    sfx('card');
+  }
+}
+
+/* ==================== 攻击 ==================== */
+function pickMy(i){
+  if(S.phase!=='play'||S.busy) return;
+  var u=S.field[i];
+  if(!u) return;
+  if(!u.canAtk){ toast('这员将本回合已动过'); return; }
+  S.sel = (S.sel===i ? -1 : i);
+  S.handSel=-1;
+  render();
+}
+
+function attackFoeUnit(ti){
+  if(S.sel<0){ 
+    if(S.phase==='play'&&!S.busy) toast('先点自己的武将');
+    return;
+  }
+  var a=S.field[S.sel];
+  var t=S.foeField[ti];
+  if(!a||!t) return;
+  // 据守限制
+  var hasTaunt=false, tauntIdx=-1;
+  for(var i=0;i<S.foeField.length;i++){ if(S.foeField[i].taunt){ hasTaunt=true; tauntIdx=i; break; } }
+  if(hasTaunt && !t.taunt){ toast('敌有据守之将，须先破他'); return; }
+
+  a.canAtk=false;
+  var an=DB[a.id], tn=DB[t.id];
+  log('【'+an.n+'】突袭【'+tn.n+'】。');
+  var far = (an.kw.indexOf('远射')>=0);
+  t.hp-=a.atk;
+  sfx('hit');
+  if(t.hp<=0){
+    log('敌方【'+tn.n+'】阵亡。');
+    S.foeField.splice(ti,1);
+  } else if(!far){
+    a.hp-=t.atk;
+    if(a.hp<=0){ log('我方【'+an.n+'】力战而亡。'); S.field.splice(S.sel,1); }
+  }
+  S.sel=-1;
+  render();
+}
+
+function attackFace(){
+  if(S.sel<0){
+    if(S.phase==='play'&&!S.busy) toast('先点自己的武将');
+    return;
+  }
+  for(var i=0;i<S.foeField.length;i++){
+    if(S.foeField[i].taunt){ toast('敌有据守之将，须先破他'); return; }
+  }
+  var a=S.field[S.sel];
+  if(!a) return;
+  a.canAtk=false;
+  var an=DB[a.id];
+  log('【'+an.n+'】直取敌首。');
+  S.sel=-1;
+  sfx('hit');
+  if(hitFoe(a.atk)) return;
+  render();
+}
+
+/* ==================== 回合结束 / 敌方 ==================== */
+function endTurn(){
+  if(S.phase!=='play'||S.busy) return;
+  S.phase='foe';
+  S.sel=-1; S.handSel=-1;
+  S.foeActed=0;
+  for(var i=0;i<S.foeField.length;i++) S.foeField[i].canAtk=true;
+  S.foeTurn=(S.foeTurn||0)+1;
+  S.foeMana=Math.min(S.turn,10);
+  foeDraw(1);
+  render();
+  setTimeout(foeLoop, 620);
+}
+
+function aiPick(){
+  var best=-1, bc=-99;
+  for(var i=0;i<S.foeHand.length;i++){
+    var c=DB[S.foeHand[i]];
+    if(c.c>S.foeMana) continue;
+    if(c.t==='gen' && S.foeField.length>=3) continue;
+    var v = c.c*10;
+    if(c.t==='gen'){ v += (c.a*2+c.h); }
+    else { v += 12; }
+    if(v>bc){ bc=v; best=i; }
+  }
+  return best;
+}
+
+function foeLoop(){
+  if(S.phase!=='foe' || S.hp<=0) return;
+
+  var pick = (S.foeActed<3) ? aiPick() : -1;
+  if(pick>=0){
+    S.foeActed++;
+    foePlay(pick);
+    render();
+    setTimeout(foeLoop, 620);
+    return;
+  }
+
+  // 找一个能攻击的敌方武将
+  var attacker=-1;
+  for(var i=0;i<S.foeField.length;i++){ if(S.foeField[i].canAtk){ attacker=i; break; } }
+  if(attacker>=0){
+    foeAttack(attacker);
+    render();
+    setTimeout(foeLoop, 640);
+    return;
+  }
+
+  setTimeout(function(){
+    if(S.phase!=='foe') return;
+    S.phase='play';
+    S.foeActed=0;
+    nextTurn(false);
+  }, 520);
+}
+
+function foePlay(i){
+  var id=S.foeHand[i], c=DB[id];
+  S.foeHand.splice(i,1);
+  S.foeMana-=c.c;
+  if(c.t==='gen'){
+    S.foeField.push({ id:id, atk:c.a, hp:c.h, maxHp:c.h,
+      canAtk:(c.kw.indexOf('突袭')>=0), taunt:(c.kw.indexOf('据守')>=0) });
+    log('敌方【'+c.n+'】上场，'+c.a+'/'+c.h+'。');
+    sfx('card');
+  } else {
+    S.foeUsed.push(id);
+    if(id==='huoji'){
+      log('敌方【火计】烧向我军。');
+      for(var k=S.field.length-1;k>=0;k--){
+        S.field[k].hp-=2;
+        if(S.field[k].hp<=0){ log('我方【'+DB[S.field[k].id].n+'】阵亡。'); S.field.splice(k,1); }
+      }
+      sfx('hurt');
+    } else if(id==='jixi'||id==='luanshi'){
+      log('敌方【'+c.n+'】突袭主公。');
+      sfx('hurt');
+      hitMe(id==='luanshi'?3:2);
+    } else if(id==='jianyu'){
+      log('敌方【箭雨】袭来。');
+      sfx('hurt');
+      hitMe(4);
+    } else if(id==='guaguo'){
+      healFoe(6);
+    } else if(id==='kongcheng'){
+      S.foeArmor+=4;
+      log('敌方获得 4 点护甲。');
+    } else if(id==='taoyuan'){
+      for(var m=0;m<S.foeField.length;m++){ S.foeField[m].atk+=1; S.foeField[m].hp+=1; }
+      log('敌方【'+c.n+'】全军振奋。');
+    }
+  }
+}
+
+function healFoe(n){
+  var b=S.foeHp;
+  S.foeHp=Math.min(S.foeMaxHp,S.foeHp+n);
+  if(S.foeHp>b) log('敌方回复 '+(S.foeHp-b)+' 点体力。');
+}
+
+function foeAttack(i){
+  var u=S.foeField[i];
+  if(!u) return;
+  u.canAtk=false;
+  var c=DB[u.id];
+
+  // 有据守先打据守
+  var target=-1, taunt=-1;
+  for(var k=0;k<S.field.length;k++){
+    var mc=DB[S.field[k].id];
+    if(mc.kw.indexOf('据守')>=0){ taunt=k; break; }
+    if(target<0 && S.field[k].hp<=u.atk) target=k;
+  }
+  if(taunt>=0) target=taunt;
+  if(target<0 && S.field.length>0) target=0;
+
+  if(target>=0){
+    var t=S.field[target];
+    var tn=DB[t.id];
+    log('敌方【'+c.n+'】攻击我方【'+tn.n+'】。');
+    t.hp-=u.atk;
+    sfx('hit');
+    var far=(c.kw.indexOf('远射')>=0);
+    if(t.hp<=0){
+      log('我方【'+tn.n+'】阵亡。');
+      S.field.splice(target,1);
+    } else if(!far && S.field.length){
+      // 我方反击
+      u.hp-=t.atk;
+      if(u.hp<=0){
+        log('敌方【'+c.n+'】被我军拼死。');
+        var idx=S.foeField.indexOf(u);
+        if(idx>=0) S.foeField.splice(idx,1);
+      }
+    }
+  } else {
+    log('敌方【'+c.n+'】直取主公。');
+    sfx('hurt');
+    hitMe(u.atk);
+  }
+}
+
+/* ==================== 胜负 ==================== */
+function winChapter(){
+  if(S.endShown) return;
+  S.endShown=true;
+  S.phase='over';
+  sfx('win');
+  var ch=CH[S.chapter];
+  // 恢复
+  var back=Math.min(10, S.maxHp-S.hp);
+  if(back>0){ S.hp+=back; }
+  if(ch.add){ S.deckBuild.push(ch.add); }
+  log('此战得胜。'+ch.win);
+  render();
+
+  var last = (S.chapter>=CH.length-1);
+  if(last){
+    document.title='END::天下一统';
+    showCover('天下一统','九州归心','九州归心，汉室重光。你以一副牌，走完了一条没人走通的路。','再战一场', function(){ resetGame(); });
+    return;
+  }
+  document.title='WIN::'+ch.n;
+  var body = ch.win + (ch.add? ('　　得牌【'+DB[ch.add].n+'】'):'')
+    + '　　主公体力 '+S.hp+'/'+S.maxHp+'。';
+  showCover('第 '+(S.chapter+1)+' 战 · 胜','',body, '进取下一关', function(){
+    var h=S.hp;
+    beginChapter(S.chapter+1);
+    S.hp=Math.min(S.maxHp, h);
+    render();
+  });
+}
+
+function loseGame(){
+  if(S.endShown) return;
+  S.endShown=true;
+  S.phase='over';
+  render();
+  document.title='END::兵败';
+  showCover('兵败','',
+    '主公力竭，大旗倒地。这一局到此为止——牌还在，再来一次。',
+    '重整旗鼓', function(){ resetGame(); });
+}
+
+function showCover(h1, seal, body, btn, cb){
+  var cv=$('cover');
+  cv.innerHTML='';
+  var elSeal=document.createElement('div');
+  elSeal.className='seal';
+  elSeal.textContent = seal ? '结局' : '胜负';
+  if(seal) elSeal.innerHTML = '终<br>局';
+  cv.appendChild(elSeal);
+  var h=document.createElement('h1'); h.textContent=h1; cv.appendChild(h);
+  if(seal){ var s=document.createElement('div'); s.className='sub'; s.textContent=seal; cv.appendChild(s); }
+  var b=document.createElement('div'); b.className='body'; b.textContent=body; cv.appendChild(b);
+  var bt=document.createElement('button'); bt.textContent=btn; cv.appendChild(bt);
+  cv.classList.add('show');
+  bt.addEventListener('click', function(){
+    cv.classList.remove('show');
+    if(cb) cb();
+  }, {once:true});
+}
+
+/* ==================== 重开 ==================== */
+function resetGame(){
+  S.maxHp=32; S.hp=32; S.armor=0;
+  S.deckBuild = STARTER.slice();
+  S.foeTurn=0;
+  S.log=[];
+  document.title='三国 · 卡牌争霸';
+  beginChapter(0);
+}
+
+/* ==================== 事件绑定 ==================== */
+$('startBtn').addEventListener('click', function(){
+  initAudio();
+  resetGame();
+});
+
+$('endBtn').addEventListener('click', function(){ endTurn(); });
+
+$('muteBtn').addEventListener('click', function(e){
+  e.stopPropagation();
+  muted=!muted;
+  try{ localStorage.setItem('sg_mute', muted?'1':'0'); }catch(err){}
+  if(MG) MG.gain.value = muted?0:0.10;
+  render();
+});
+
+$('hand').addEventListener('click', function(e){
+  var el=e.target.closest('.hcard');
+  if(!el) return;
+  var i=+el.getAttribute('data-hand');
+  playHand(i);
+});
+
+$('myField').addEventListener('click', function(e){
+  var el=e.target.closest('.unit');
+  if(!el) return;
+  pickMy(+el.getAttribute('data-me'));
+});
+
+$('foeField').addEventListener('click', function(e){
+  var el=e.target.closest('.unit');
+  if(!el) return;
+  attackFoeUnit(+el.getAttribute('data-foe'));
+});
+
+document.querySelector('.herobar.foe').addEventListener('click', function(){
+  if(S.sel>=0) attackFace();
+});
+
+// 初始化静态渲染
+S.deckBuild = STARTER.slice();
+S.foeName='';
+S.phase='idle';
+render();
+
+// 供自动测试用
+window.__SG = { S:S, DB:DB, playHand:playHand, pickMy:pickMy, attackFace:attackFace,
+  attackFoeUnit:attackFoeUnit, endTurn:endTurn, beginChapter:beginChapter };
+})();
+</script>
+</body>
+</html>
