@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>heic 转 jpg、webp 转 png 在线免费，苹果图片也能转 - 糊涂蛋工具箱</title>
+<meta name="description" content="图片格式转换在线免费：iPhone 的 heic 转 jpg、webp 转 png、png 转 jpg，一次可以转多张。浏览器本地处理，文件不上传，不用注册。">
+<meta name="keywords" content="heic转jpg,苹果照片转jpg,webp转png,png转jpg,图片格式转换,heif转换">
+<link rel="stylesheet" href="../../assets/base.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="logo" href="../../index.html"><span data-egg></span><span>糊涂蛋工具箱</span></a>
+    <div class="spacer"></div>
+    <div class="nav"><a href="./../image-compress/">压缩</a><a href="./../image-resize/">改尺寸</a></div>
+  </div>
+
+  <div class="tool-head">
+    <a class="crumb" href="../../index.html">← 全部工具</a>
+    <h1>图片格式转换</h1>
+    <p>苹果手机拍的 heic 传到电脑或报名系统打不开？转成 jpg 就行。webp、png、gif 之间也能互转，一次选一堆一起处理。不上传，本地转。</p>
+  </div>
+
+  <div class="tool-body card">
+    <div class="drop" id="drop">
+      <p class="big">拖图片进来，或者点一下选</p>
+      <p class="sub">支持 heic / heif / jpg / png / webp / gif / bmp，可以多选</p>
+      <input type="file" accept="image/*,.heic,.heif" multiple>
+    </div>
+
+    <ul class="filelist" id="files"></ul>
+
+    <div class="row">
+      <div class="field" style="min-width:170px">
+        <label>转成什么格式</label>
+        <select id="fmt">
+          <option value="image/jpeg">JPG（最通用，推荐）</option>
+          <option value="image/png">PNG（要透明背景才选）</option>
+          <option value="image/webp">WebP（体积小，部分旧系统不认）</option>
+        </select>
+      </div>
+      <div class="field" style="min-width:150px">
+        <label>画质（JPG/WebP）</label>
+        <select id="q">
+          <option value="0.95">最高</option>
+          <option value="0.88" selected>标准</option>
+          <option value="0.75">小一点</option>
+        </select>
+      </div>
+      <button class="btn primary" id="go" disabled>开始转换</button>
+    </div>
+
+    <div class="res" id="res"></div>
+
+    <p class="note"><b>heic 首次转换会慢几秒：</b>浏览器要先把苹果那套编码加载起来，一张之后后面就快了，别急。要是转出来是黑的，多半是那种带多帧的实况照片，试试点单张重转。</p>
+  </div>
+
+  <div class="related card" style="margin-top:22px">
+    <h3 style="font-size:16px">什么时候需要转</h3>
+    <p class="muted" style="font-size:13.5px;margin:8px 0 0">iPhone 默认拍 heic，体积小但很多政务系统、老邮箱、打印店不认，一律要 jpg。网页上存的图常是 webp，要放进 Word 或 PPT 就得转 png 或 jpg。png 转 jpg 会丢掉透明背景，自动补白底。</p>
+  </div>
+
+  <footer>
+    <div>文件不离开你的设备 · 不上传服务器 · 不存任何记录</div>
+    <div style="margin-top:6px"><a href="../../index.html">回首页</a>　·　support@hutudan.com</div>
+  </footer>
+</div>
+
+<script src="../../assets/common.js"></script>
+<script>
+(function(){
+  var F = window.FT, $ = F.$, files = [], busy = false, heicReady = null;
+  var res = $('#res'), go = $('#go');
+
+  function loadHeic(){
+    if (window.heic2any) return Promise.resolve();
+    if (heicReady) return heicReady;
+    heicReady = new Promise(function(ok, bad){
+      var s = document.createElement('script');
+      s.src = '../../assets/heic2any.min.js';
+      s.onload = function(){ ok(); };
+      s.onerror = function(){ bad(new Error('heic 解码库没加载上')); };
+      document.head.appendChild(s);
+    });
+    return heicReady;
+  }
+
+  function render(){
+    var list = $('#files'); list.innerHTML = '';
+    files.forEach(function(f, i){
+      var li = document.createElement('li');
+      li.innerHTML = '<span class="nm"></span><span class="sz"></span><button class="rm">✕</button>';
+      li.querySelector('.nm').textContent = f.name;
+      li.querySelector('.sz').textContent = F.fmtSize(f.size);
+      li.querySelector('.rm').onclick = function(e){ e.stopPropagation(); files.splice(i,1); render(); };
+      list.appendChild(li);
+    });
+    go.disabled = !files.length || busy;
+  }
+
+  F.setupDrop($('#drop'), function(fs){
+    files = files.concat(fs.filter(function(f){
+      return /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i.test(f.name);
+    }));
+    render();
+  });
+
+  function isHeic(file){
+    return /\.(heic|heif)$/i.test(file.name) || /heic|heif/i.test(file.type || '');
+  }
+
+  async function convertOne(file, type, q){
+    var blob = file;
+    var note = '';
+    if (isHeic(file)){
+      await loadHeic();
+      try {
+        var out = await window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
+        blob = Array.isArray(out) ? out[0] : out;
+        note = 'heic → ';
+      } catch (e){
+        // Safari 之类可能原生能读，交给下面走 img
+        note = '';
+      }
+    }
+    var o;
+    try { o = await F.loadImage(blob); }
+    catch (e){
+      if (!note) throw new Error('这张读不出来，可能不是标准图片');
+      throw e;
+    }
+    var img = o.img;
+    var cv = document.createElement('canvas');
+    cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+    var ctx = cv.getContext('2d');
+    if (type === 'image/jpeg'){ ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height); }
+    ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(o.url);
+    var b = await F.canvasToBlob(cv, type, q);
+    return { blob: b, note: note };
+  }
+
+  go.onclick = async function(){
+    if (!files.length || busy) return;
+    busy = true; go.disabled = true; res.innerHTML = '';
+    var type = $('#fmt').value, q = +$('#q').value;
+    var ext = type === 'image/jpeg' ? 'jpg' : (type === 'image/webp' ? 'webp' : 'png');
+    for (var i = 0; i < files.length; i++){
+      var f = files[i];
+      var item = document.createElement('div');
+      item.className = 'item';
+      item.innerHTML = '<span class="nm"></span><span class="stat">转换中…</span>';
+      item.querySelector('.nm').textContent = f.name;
+      res.appendChild(item);
+      try {
+        var r = await convertOne(f, type, q);
+        item.querySelector('.stat').textContent = (r.note || '') + F.fmtSize(f.size) + ' → ' + ext.toUpperCase() + ' · ' + F.fmtSize(r.blob.size);
+        var a = document.createElement('button');
+        a.className = 'btn sm primary'; a.textContent = '下载';
+        a.onclick = function(b, n){ return function(){ F.download(b, n); }; }(r.blob, F.saveName(f.name, ext));
+        item.appendChild(a);
+        go.textContent = '转换中… ' + (i + 1) + '/' + files.length;
+      } catch (e){
+        item.querySelector('.stat').textContent = '失败：' + e.message;
+      }
+    }
+    busy = false; go.disabled = !files.length; go.textContent = '开始转换';
+    F.toast('转完了');
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>
