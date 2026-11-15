@@ -118,7 +118,7 @@
       try {
         var out = await window.heic2any({ blob: file, toType: 'image/jpeg', quality: 0.92 });
         blob = Array.isArray(out) ? out[0] : out;
-        note = 'heic → ';
+        note = 'HEIC · ';
       } catch (e){
         // Safari 之类可能原生能读，交给下面走 img
         note = '';
