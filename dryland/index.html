@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>干地 · 水上求生</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:#03060c;color:#e8f1fa;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Noto Serif SC","Microsoft YaHei",sans-serif;user-select:none}
+  #bgg{position:fixed;inset:0;width:100%;height:100%}
+  .vig{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 42%,rgba(0,0,0,0) 34%,rgba(0,0,0,.62) 100%);pointer-events:none}
+  .stage{position:fixed;inset:0;overflow:hidden}
+
+  /* portraits */
+  .cast{position:absolute;inset:0}
+  .pt{position:absolute;bottom:132px;width:44vw;max-width:270px;height:auto;opacity:.42;filter:saturate(.6) brightness(.62);transition:opacity .45s,filter .45s,transform .45s;transform:translateY(14px) scale(.97)}
+  .pt.l{left:-3vw}
+  .pt.r{right:-3vw}
+  .pt.on{opacity:1;filter:none;transform:translateY(0) scale(1)}
+  .pt.up{transform:translateY(-6px) scale(1.02)}
+  .pt svg{width:100%;height:auto;display:block;filter:drop-shadow(0 18px 30px rgba(0,0,0,.55))}
+
+  /* dialogue */
+  .box{position:absolute;left:0;right:0;bottom:0;padding:0 0 max(12px,env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(4,9,18,0) 0%,rgba(4,9,18,.86) 26%,rgba(3,6,12,.97) 100%)}
+  .inner{max-width:760px;margin:0 auto;padding:0 20px 16px}
+  .who{display:inline-block;font-size:12.5px;letter-spacing:.24em;color:#8fd8ff;margin-bottom:8px;padding:3px 12px;border-radius:999px;background:rgba(24,74,110,.5);border:1px solid rgba(120,210,255,.28)}
+  .line{font-size:16.5px;line-height:1.95;min-height:100px;color:#e2edf8;letter-spacing:.01em;text-shadow:0 1px 12px rgba(0,0,0,.6)}
+  .line .em{color:#ffd98a}
+  .nxt{text-align:right;font-size:11.5px;color:#6d90b2;letter-spacing:.18em;height:16px;animation:bl 1.8s infinite}
+  @keyframes bl{0%,100%{opacity:.25}50%{opacity:1}}
+  .opts{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+  .opts button{text-align:left;font-family:inherit;font-size:14.5px;line-height:1.55;color:#dbeaf8;padding:12px 16px;border-radius:12px;border:1px solid rgba(120,190,240,.24);background:rgba(22,44,72,.6);cursor:pointer;transition:.16s}
+  .opts button:hover{background:rgba(40,80,124,.72);border-color:rgba(150,220,255,.55);transform:translateX(2px)}
+
+  /* hud */
+  .hud{position:absolute;top:max(14px,env(safe-area-inset-top));left:0;right:0;padding:0 18px;display:flex;justify-content:space-between;align-items:center;gap:10px;pointer-events:none}
+  .loc{font-size:11px;letter-spacing:.34em;color:#7fa0bf}
+  .pills{display:flex;gap:10px}
+  .pill{font-size:10.5px;letter-spacing:.1em;color:#8fb0cc;background:rgba(8,20,36,.6);border:1px solid rgba(110,170,220,.18);padding:4px 9px;border-radius:999px}
+  .pill b{color:#dff0ff;font-weight:600;margin-left:3px}
+
+  /* title / end */
+  .cover{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 30%,#0d2340,#03060c 72%);z-index:9;transition:opacity .6s}
+  .cover.hide{opacity:0;pointer-events:none}
+  .coverbox{text-align:center;padding:0 26px}
+  .coverbox .k{font-size:10.5px;letter-spacing:.5em;color:#6f92b4}
+  .coverbox h1{font-size:44px;letter-spacing:.16em;font-weight:600;margin:14px 0 6px;color:#eaf6ff;text-shadow:0 0 40px rgba(110,190,255,.4)}
+  .coverbox h1 span{color:#8fd8ff}
+  .coverbox p{font-size:13px;color:#8aa3be;line-height:2;margin-top:10px}
+  .coverbox button{margin-top:30px;padding:14px 52px;border:0;border-radius:999px;font-family:inherit;font-size:14.5px;font-weight:600;letter-spacing:.24em;color:#03121f;background:linear-gradient(135deg,#8fe6ff,#7ea6ff);box-shadow:0 14px 40px rgba(110,190,255,.3);cursor:pointer}
+  .coverbox .again{margin-top:14px;display:block;font-size:11.5px;color:#6b88a8;letter-spacing:.16em;cursor:pointer;background:none;border:0;font-family:inherit;width:100%}
+</style>
+</head>
+<body>
+<canvas id="bgg"></canvas>
+<div class="vig"></div>
+
+<div class="stage">
+  <div class="cast" id="cast"></div>
+  <div class="hud">
+    <div class="loc" id="loc">无风带 · 第 3 天</div>
+    <div class="pills">
+      <div class="pill">水<b id="pW">62</b></div>
+      <div class="pill">食<b id="pF">55</b></div>
+      <div class="pill">信<b id="pT">40</b></div>
+    </div>
+  </div>
+  <div class="box">
+    <div class="inner">
+      <div class="who" id="who">马林</div>
+      <div class="line" id="line"></div>
+      <div class="opts" id="opts"></div>
+      <div class="nxt" id="nxt"></div>
+    </div>
+  </div>
+</div>
+
+<div class="cover" id="cover">
+  <div class="coverbox">
+    <div class="k">A TALE OF THE FLOODED EARTH</div>
+    <h1>干<span>地</span></h1>
+    <p>水升上来了，没有退下去。<br>最后一块陆地沉进海里的时候，人们开始朝北走。<br>没人见过那块地，但每个人都在讲它。</p>
+    <button id="startBtn">开始</button>
+    <button class="again" id="continueBtn" style="display:none">继续上次</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ================= 人物 ================= */
+  var C = {
+    marin: { name: '马林', pal: { skin: '#8e9fae', skin2: '#6f8192', hair: '#1b222c', cloth: '#1d2b3a', accent: '#4f8fae' }, gills: true },
+    xiaoman: { name: '小满', pal: { skin: '#e0b48d', skin2: '#c08e63', hair: '#7b3a26', cloth: '#8a6440', accent: '#d58d5c' } },
+    deacon: { name: '迪肯', pal: { skin: '#b07a5c', skin2: '#824f38', hair: '#2b1a12', cloth: '#2a211c', accent: '#e0602a' }, scar: true, bald: true },
+    bri: { name: '老布里', pal: { skin: '#c79c7c', skin2: '#9a6f53', hair: '#c9c4bb', cloth: '#3e4a44', accent: '#8fae74' }, beard: true, goggles: true }
+  };
+
+  function portrait(id) {
+    var c = C[id], p = c.pal;
+    var hair = c.bald ? '' :
+      '<path d="M46 96 C44 52 74 38 100 38 C128 38 156 54 154 96 C148 74 132 62 100 62 C70 62 54 74 46 96 Z" fill="' + p.hair + '"/>' +
+      '<path d="M46 96 C50 84 62 78 70 80 C62 86 58 94 56 104 Z" fill="' + p.hair + '"/>' +
+      '<path d="M154 96 C150 84 138 78 130 80 C138 86 142 94 144 104 Z" fill="' + p.hair + '"/>';
+    var beard = c.beard ?
+      '<path d="M70 150 C74 178 88 192 100 192 C112 192 126 178 130 150 C126 168 114 176 100 176 C86 176 74 168 70 150 Z" fill="' + p.hair + '" opacity=".92"/>' : '';
+    var goggles = c.goggles ?
+      '<g opacity=".95"><rect x="62" y="72" width="30" height="22" rx="10" fill="#1a2733" stroke="' + p.accent + '" stroke-width="2.5"/><rect x="108" y="72" width="30" height="22" rx="10" fill="#1a2733" stroke="' + p.accent + '" stroke-width="2.5"/><rect x="92" y="80" width="16" height="5" fill="' + p.accent + '"/></g>' :
+      '<ellipse cx="82" cy="106" rx="10" ry="5.4" fill="#f2f8ff"/><circle cx="83" cy="106" r="3.1" fill="#16202b"/><ellipse cx="118" cy="106" rx="10" ry="5.4" fill="#f2f8ff"/><circle cx="117" cy="106" r="3.1" fill="#16202b"/>' +
+      '<path d="M70 93 C76 88 88 88 94 92" stroke="' + p.hair + '" stroke-width="3.4" stroke-linecap="round" fill="none"/>' +
+      '<path d="M106 92 C112 88 124 88 130 93" stroke="' + p.hair + '" stroke-width="3.4" stroke-linecap="round" fill="none"/>';
+    var scar = c.scar ?
+      '<path d="M126 84 L118 122 L124 150" stroke="#f0d9c8" stroke-width="2" opacity=".55" fill="none"/>' : '';
+    var gills = c.gills ?
+      '<g stroke="#3f6b7d" stroke-width="2.2" opacity=".8" fill="none"><path d="M64 128 q10 6 0 12"/><path d="M70 126 q10 7 0 14"/><path d="M136 128 q-10 6 0 12"/><path d="M130 126 q-10 7 0 14"/></g>' : '';
+    return '<svg viewBox="0 0 200 230" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs><linearGradient id="g' + id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + p.cloth + '"/><stop offset="1" stop-color="#0a0f16"/></linearGradient></defs>' +
+      '<path d="M28 230 C28 186 56 166 100 166 C144 166 172 186 172 230 Z" fill="url(#g' + id + ')"/>' +
+      '<path d="M78 158 h44 v18 c0 10 -8 16 -22 16 c-14 0 -22 -6 -22 -16 Z" fill="' + p.skin2 + '"/>' +
+      '<ellipse cx="100" cy="112" rx="46" ry="50" fill="' + p.skin + '"/>' +
+      '<ellipse cx="100" cy="118" rx="46" ry="44" fill="' + p.skin + '" opacity=".6"/>' +
+      hair + beard + goggles + scar + gills +
+      '<path d="M92 138 C96 142 104 142 108 138" stroke="' + p.skin2 + '" stroke-width="3.2" stroke-linecap="round" fill="none"/>' +
+      '<path d="M100 118 L96 130 L103 130" stroke="' + p.skin2 + '" stroke-width="2.4" stroke-linecap="round" fill="none" opacity=".8"/>' +
+      '<path d="M100 168 C96 152 104 152 100 168" fill="' + p.skin2 + '" opacity=".5"/>' +
+      '</svg>';
+  }
+
+  /* ================= 剧本 ================= */
+  var SCENES = {
+    cover: '无风带 · 第 3 天',
+    sea: '无风带 · 第 5 天',
+    atoll: '浮城环礁',
+    night: '夜海',
+    storm: '风暴 · 第 11 天',
+    shore: '浅滩'
+  };
+
+  var N = {
+    start: {
+      bg: 'sea', loc: '无风带 · 第 5 天', cast: [['marin', 'l']],
+      lines: [
+        { w: '马林', t: '（第 5 天。帆垂着，像一块湿布。）' },
+        { w: '马林', t: '水还有半桶。鱼线断了三根。往北，一直往北。' },
+        { w: '马林', t: '（远处的水面上，漂着一样不该漂着的东西——一只木箱，箱上绑着绳子。）' }
+      ],
+      choices: [
+        { t: '靠过去，把箱子捞上来', go: 'box', eff: { trust: 2 } },
+        { t: '不惹麻烦，绕开', go: 'skipbox', eff: { water: -3 } }
+      ]
+    },
+    box: {
+      bg: 'sea', cast: [['marin', 'l']],
+      lines: [
+        { w: '马林', t: '箱子不重。打开的时候，里头蜷着一个人。' },
+        { w: '小满', t: '……别把我扔回去。' },
+        { w: '马林', t: '一个小孩。嘴唇干得裂开，眼睛却亮得反常。' },
+        { w: '小满', t: '他们有枪。迪肯的人。他们要把我背上的东西刮下来。' }
+      ],
+      choices: [
+        { t: '把她拉上船', go: 'takeher', eff: { water: -6, trust: 14 } },
+        { t: '给她半壶水，让她自己漂', go: 'leaveher', eff: { water: -3, trust: -10 } }
+      ]
+    },
+    skipbox: {
+      bg: 'sea', cast: [['marin', 'l']],
+      lines: [
+        { w: '马林', t: '（你调开船头。）' },
+        { w: '马林', t: '（半夜，你听见水里有划水的声音。很小，断断续续，像有人在追。）' },
+        { w: '小满', t: '……喂。喂！' },
+        { w: '马林', t: '（一个小孩，抱着一块木板，追了你三个小时。）' }
+      ],
+      choices: [
+        { t: '拉她上来', go: 'takeher', eff: { water: -6, trust: 10 } },
+        { t: '当没听见', go: 'bad1', eff: { trust: -20 } }
+      ]
+    },
+    bad1: {
+      bg: 'night', cast: [['marin', 'l']],
+      lines: [
+        { w: '马林', t: '（你听见那声划水停了。然后什么都没有了。）' },
+        { w: '马林', t: '（你告诉自己，一个人的水，撑不了两个人。）' },
+        { w: '马林', t: '（可你一夜没睡着。树影在帆上晃，像一只小小的手。）' }
+      ],
+      next: 'atoll0'
+    },
+    leaveher: {
+      bg: 'night', cast: [['marin', 'l']],
+      lines: [
+        { w: '马林', t: '（你给了她水。她说了声谢谢，声音轻得像没有。）' },
+        { w: '马林', t: '（你把船开走了。回头看，她抱着木板坐在水上，越来越小。）' },
+        { w: '马林', t: '（三小时后，你听见身后有引擎声——不是你。）' }
+      ],
+      next: 'atoll0'
+    },
+    takeher: {
+      bg: 'sea', cast: [['marin', 'l'], ['xiaoman', 'r']],
+      lines: [
+        { w: '小满', t: '我叫小满。我娘说，满月那天的孩子能看见水底。' },
+        { w: '马林', t: '你背上是什么。' },
+        { w: '小满', t: '（她解开上衣一角，肩胛骨上有一圈褪色的纹身，像一张图。）' },
+        { w: '小满', t: '娘说，跟着它走，就能走到干地。' },
+        { w: '马林', t: '（干地。讲了三十年的东西。）' }
+      ],
+      choices: [
+        { t: '「那就往北。」', go: 'atoll1', eff: { trust: 8 } },
+        { t: '「我送你到环礁，你换条船自己走。」', go: 'atoll1', eff: { trust: -6 } }
+      ]
+    },
+
+    atoll0: {
+      bg: 'atoll', loc: '浮城环礁', cast: [['marin', 'l'], ['bri', 'r']],
+      lines: [
+        { w: '老布里', t: '一个人？一个人还想换水？' },
+        { w: '马林', t: '我有旧图。' },
+        { w: '老布里', t: '图不值钱了，小子。这年头值钱的是土。一捧土，一桶水。' }
+      ],
+      choices: [
+        { t: '用最后一点土换水', go: 'atollTrade', eff: { water: 26, trust: 2 } },
+        { t: '换消息：往北的路', go: 'atollTrade2', eff: { trust: 6 } }
+      ]
+    },
+    atoll1: {
+      bg: 'atoll', loc: '浮城环礁', cast: [['marin', 'l'], ['bri', 'r'], ['xiaoman', 'r']],
+      lines: [
+        { w: '老布里', t: '（他盯着小满，手里的烟斗停在半空。）' },
+        { w: '老布里', t: '这孩子……背上那个圈，你看见了吗。' },
+        { w: '马林', t: '看见了。' },
+        { w: '老布里', t: '三十年前有个女人也带着这个圈，从这儿往北去了。再没回来过。' },
+        { w: '老布里', t: '不过她走的时候，船上装满了水。你们这样，走不到。' }
+      ],
+      choices: [
+        { t: '把土全给他，换足水和药', go: 'atollTrade', eff: { water: 30, trust: 8 } },
+        { t: '只换够三天的', go: 'storm1', eff: { water: 14, trust: -2 } },
+        { t: '不换，直接走', go: 'storm1', eff: { trust: -4 } }
+      ]
+    },
+    atollTrade: {
+      bg: 'atoll', cast: [['marin', 'l'], ['bri', 'r']],
+      lines: [
+        { w: '老布里', t: '（他把水一桶桶推过来，动作很慢，像在称什么。）' },
+        { w: '老布里', t: '小子。北边有一道暖流，跟着它走三天，会看见鸟。' },
+        { w: '老布里', t: '看见鸟就往鸟飞的方向走。别管烟，别管浪。' },
+        { w: '马林', t: '你为什么告诉我。' },
+        { w: '老布里', t: '（他笑了一下，露出缺的牙。）因为我老了。老的人看不得小孩死。' }
+      ],
+      next: 'storm1'
+    },
+    atollTrade2: {
+      bg: 'atoll', cast: [['marin', 'l'], ['bri', 'r']],
+      lines: [
+        { w: '老布里', t: '往北。顺着暖流，看见鸟就跟着鸟。' },
+        { w: '老布里', t: '还有——烟者在找你这样的船。他们的头儿叫迪肯，烧柴油烧到脑子坏掉。' },
+        { w: '老布里', t: '他也在找干地。他找干地不是为了活，是为了让所有人都知道是他先到的。' }
+      ],
+      next: 'storm1'
+    },
+
+    storm1: {
+      bg: 'storm', loc: '风暴 · 第 11 天', cast: [['marin', 'l'], ['xiaoman', 'r']],
+      lines: [
+        { w: '小满', t: '马林！左边！' },
+        { w: '马林', t: '（浪从侧面拍过来，甲板整个立起来。你听见木头裂开的声音。）' },
+        { w: '小满', t: '底舱在进水！' },
+        { w: '马林', t: '（水已经到膝盖。船在往下沉，一寸一寸。）' }
+      ],
+      choices: [
+        { t: '先补漏，赌这一船', go: 'stormfix', eff: { water: -8, trust: 6 } },
+        { t: '扔货减重，抢风头', go: 'stormdump', eff: { food: -14, trust: 2 } }
+      ]
+    },
+    stormfix: {
+      bg: 'storm', cast: [['marin', 'l'], ['xiaoman', 'r']],
+      lines: [
+        { w: '马林', t: '（你把铅皮按在裂缝上，一下一下敲。冷水从袖口往里灌。）' },
+        { w: '小满', t: '我舀水！我能舀！' },
+        { w: '马林', t: '（天亮的时候，船还在。水停在脚踝，不再涨了。）' },
+        { w: '小满', t: '（她靠着桅杆睡着了，手里还攥着半只瓢。）' }
+      ],
+      next: 'deacon1'
+    },
+    stormdump: {
+      bg: 'storm', cast: [['marin', 'l'], ['xiaoman', 'r']],
+      lines: [
+        { w: '马林', t: '（你把箱子、绳子、多余的东西全推下海。船轻了，抬起来了。）' },
+        { w: '小满', t: '吃的……全没了。' },
+        { w: '马林', t: '人还在。' }
+      ],
+      next: 'deacon1'
+    },
+
+    deacon1: {
+      bg: 'night', loc: '夜海 · 第 14 天', cast: [['marin', 'l'], ['deacon', 'r']],
+      lines: [
+        { w: '（三艘摩托艇围上来。中间那艘的船头站着一个人，脸被火光照成橘色。）' },
+        { w: '迪肯', t: '把那个孩子给我。' },
+        { w: '马林', t: '船上没有孩子。' },
+        { w: '迪肯', t: '（他笑了。牙齿白得不像真的。）' },
+        { w: '迪肯', t: '我闻得到。她身上有干地的味道。' },
+        { w: '迪肯', t: '你听好了，戴鳃的：这世界上没有白给的路。要么把人给我，要么我烧了你的船，自己上来拿。' }
+      ],
+      choices: [
+        { t: '「你上来试试。」', go: 'fight', eff: { trust: 12, food: -10 } },
+        { t: '假意交人，夜里再抢回来', go: 'trick', eff: { trust: -2 } },
+        { t: '把小满交出去', go: 'betray', eff: { trust: -40 } }
+      ]
+    },
+    fight: {
+      bg: 'night', cast: [['marin', 'l'], ['deacon', 'r']],
+      lines: [
+        { w: '马林', t: '（你把鱼枪横过来。他们的摩托艇贴上来，铁皮刮着铁皮。）' },
+        { w: '迪肯', t: '（笑着摇头）你以为你在救她？你连自己都救不了。' },
+        { w: '马林', t: '（你捅穿了第一艘艇的油箱。火在夜里炸开，海面亮了一瞬。）' },
+        { w: '马林', t: '（趁着那一瞬，你把船甩进侧面。声浪远了。）' },
+        { w: '小满', t: '他们还在后面……' },
+        { w: '马林', t: '那就一直往前。' }
+      ],
+      next: 'final'
+    },
+    trick: {
+      bg: 'night', cast: [['marin', 'l'], ['deacon', 'r']],
+      lines: [
+        { w: '马林', t: '（你把一个人形的东西裹进帆布里，推过去。）' },
+        { w: '迪肯', t: '（他接过，掂了掂，忽然撕开布。）' },
+        { w: '迪肯', t: '这不是人。这是绳子。' },
+        { w: '马林', t: '（你已经在跑了。引擎声在后面炸起来。）' },
+        { w: '小满', t: '（她缩在舱里，捂着嘴不让自己叫出声。）' }
+      ],
+      next: 'final'
+    },
+    betray: {
+      bg: 'night', cast: [['marin', 'l'], ['deacon', 'r'], ['xiaoman', 'r']],
+      lines: [
+        { w: '马林', t: '（你把她递过去。她没挣，也没哭，只是看着你。）' },
+        { w: '小满', t: '马林。你也会沉下去的。' },
+        { w: '迪肯', t: '（他把孩子夹在腋下，回头冲你抬了抬下巴。）干地的路，我替你走。' },
+        { w: '马林', t: '（引擎声远了。海面重新安静。）' },
+        { w: '马林', t: '（你在船上坐了整整一夜。天亮了，帆还是垂着。）' }
+      ],
+      next: 'ending_bad'
+    },
+
+    final: {
+      bg: 'sea', loc: '暖流尽头 · 第 21 天', cast: [['marin', 'l'], ['xiaoman', 'r']],
+      lines: [
+        { w: '小满', t: '鸟！马林，有鸟！' },
+        { w: '马林', t: '（三只灰白的鸟，贴着水面往同一个方向飞。）' },
+        { w: '马林', t: '（你跟着它们走了一天半。海水从墨蓝变成灰绿，然后是浅绿。）' },
+        { w: '马林', t: '（第三天清晨，雾里透出一段轮廓。不是船，不是礁——是山。）' },
+        { w: '小满', t: '（她站在船头，一动也不动。）那就是干地吗。' },
+        { w: '马林', t: '（身后传来引擎声。迪肯的头船从雾的另一侧压了过来。）' }
+      ],
+      choices: [
+        { t: '全速冲岸，不管身后', go: 'end_shore', eff: {} },
+        { t: '先回头烧掉那艘船', go: 'end_fire', eff: {} }
+      ]
+    },
+    end_shore: {
+      bg: 'shore', loc: '浅滩', cast: [['marin', 'l'], ['xiaoman', 'r']],
+      lines: [
+        { w: '马林', t: '（龙骨刮过沙的声音，整条船都在抖。）' },
+        { w: '马林', t: '（你抱她跳进齐腰深的水里，往岸上走。身后的船没撑住，散了。）' },
+        { w: '小满', t: '（她跪在沙上，把脸埋进土里，肩膀在抖。）' },
+        { w: '小满', t: '是热的……马林，土是热的。' },
+        { w: '马林', t: '（你抬头。山坡上有草。真正的草。有虫在爬。）' },
+        { w: '马林', t: '（你在这片干燥的土地上躺下，第一次没有听见海。）' }
+      ],
+      next: 'ending_good'
+    },
+    end_fire: {
+      bg: 'shore', loc: '浅滩', cast: [['marin', 'l'], ['xiaoman', 'r'], ['deacon', 'r']],
+      lines: [
+        { w: '马林', t: '（你把油桶滚到船尾，点了火，推下去。）' },
+        { w: '迪肯', t: '（他在另一艘船的船头大声喊什么，被风撕碎了。）' },
+        { w: '马林', t: '（火在海面上烧成一条长长的线。他的船在火里转了半圈，停了。）' },
+        { w: '小满', t: '马林！岸！' },
+        { w: '马林', t: '（你拉着她趟水上岸。沙是黑的，烫脚。）' },
+        { w: '马林', t: '（身后有人的声音在喊，可你已经不想回头了。）' }
+      ],
+      next: 'ending_good'
+    },
+    ending_good: {
+      bg: 'shore', cast: [['marin', 'l'], ['xiaoman', 'r']],
+      lines: [
+        { w: '（第 21 天。你在干地上过了一夜。）' },
+        { w: '小满', t: '马林，我们以后住这儿吗。' },
+        { w: '马林', t: '（你看着远处，海在地平线上，像一条还没干透的边。）' },
+        { w: '马林', t: '住这儿。' }
+      ],
+      end: { k: '结局 · 抵达', t: '干地', p: '你活到了第 21 天，也把她带到了岸上。\n\n往后的日子会很难——这里没有船，没有蒸馏器，也没有回头路。\n\n但土是干的。你终于可以躺下，而不必先看一眼水位。' }
+    },
+    ending_bad: {
+      bg: 'night', cast: [['marin', 'l']],
+      lines: [
+        { w: '马林', t: '（第 19 天。水还剩两指。）' },
+        { w: '马林', t: '（你在船上又漂了很久。有一天早上，你听见鸟叫。）' },
+        { w: '马林', t: '（你抬起头。三只灰白的鸟，往北飞。）' },
+        { w: '马林', t: '（你已经没有力气升帆了。）' }
+      ],
+      end: { k: '结局 · 漂', t: '听见了鸟', p: '第 19 天，你听见了鸟。\n\n它们往北飞，飞得很稳。你想跟上，可手抬不起来。\n\n海面很平。你躺在甲板上，感觉阳光一寸一寸移过脸。\n\n很远的地方，好像有人在叫一个名字。你不确定是不是自己的。' }
+    }
+  };
+
+  /* ================= 状态 ================= */
+  var st = { water: 62, food: 55, trust: 40 };
+  var SAVE = 'dryland_save_v1';
+  var cur = null, li = 0, typing = false, tmr = null, fullText = '';
+
+  var elCast = document.getElementById('cast');
+  var elWho = document.getElementById('who'), elLine = document.getElementById('line');
+  var elNxt = document.getElementById('nxt'), elOpts = document.getElementById('opts');
+  var elLoc = document.getElementById('loc');
+  var elW = document.getElementById('pW'), elF = document.getElementById('pF'), elT = document.getElementById('pT');
+  var elCover = document.getElementById('cover');
+
+  function hud() {
+    elW.textContent = Math.max(0, Math.round(st.water));
+    elF.textContent = Math.max(0, Math.round(st.food));
+    elT.textContent = Math.max(0, Math.round(st.trust));
+    elW.parentNode.style.borderColor = st.water < 20 ? 'rgba(255,110,110,.5)' : '';
+  }
+  function applyEff(e) {
+    if (!e) return;
+    if (e.water) st.water += e.water;
+    if (e.food) st.food += e.food;
+    if (e.trust) st.trust += e.trust;
+    st.water = Math.min(100, Math.max(0, st.water));
+    st.food = Math.min(100, Math.max(0, st.food));
+    st.trust = Math.min(100, Math.max(0, st.trust));
+    hud();
+  }
+
+  function setCast(list) {
+    elCast.innerHTML = '';
+    list.forEach(function (p) {
+      var d = document.createElement('div');
+      d.className = 'pt ' + p[1];
+      d.dataset.id = p[0];
+      d.innerHTML = portrait(p[0]);
+      elCast.appendChild(d);
+    });
+  }
+  function highlight(who) {
+    var id = null;
+    for (var k in C) if (C[k].name === who) id = k;
+    Array.prototype.forEach.call(elCast.children, function (n) {
+      if (id && n.dataset.id === id) { n.classList.add('on', 'up'); setTimeout(function () { n.classList.remove('up'); }, 700); }
+      else if (id) n.classList.add('on');
+    });
+  }
+
+  function showNode(id) {
+    cur = N[id]; li = 0;
+    if (!cur) return;
+    if (cur.bg) setBg(cur.bg);
+    if (cur.loc) elLoc.textContent = cur.loc;
+    if (cur.cast) setCast(cur.cast);
+    elOpts.innerHTML = '';
+    nextLine();
+    try { localStorage.setItem(SAVE, JSON.stringify({ n: id, st: st })); } catch (e) {}
+  }
+
+  function nextLine() {
+    if (!cur) return;
+    if (li >= cur.lines.length) {
+      if (cur.choices) showChoices();
+      else if (cur.next) showNode(cur.next);
+      else if (cur.end) showEnd(cur.end);
+      return;
+    }
+    var L = cur.lines[li++];
+    var who = L.w;
+    if (who.indexOf('（') === 0) { elWho.style.display = 'none'; elWho.textContent = ''; }
+    else { elWho.style.display = 'inline-block'; elWho.textContent = who; highlight(who); }
+    elOpts.innerHTML = '';
+    typeText(L.t);
+  }
+
+  function typeText(t) {
+    fullText = t;
+    typing = true;
+    elNxt.textContent = '';
+    elLine.textContent = '';
+    var i = 0;
+    clearInterval(tmr);
+    tmr = setInterval(function () {
+      i += 1;
+      elLine.textContent = t.slice(0, i);
+      if (i >= t.length) { done(); }
+    }, 26);
+  }
+  function done() {
+    clearInterval(tmr); typing = false;
+    elLine.textContent = fullText;
+    if (!cur.choices || li < cur.lines.length) elNxt.textContent = '轻触继续 ▸';
+  }
+
+  function showChoices() {
+    elOpts.innerHTML = '';
+    cur.choices.forEach(function (ch) {
+      var b = document.createElement('button');
+      b.textContent = ch.t;
+      b.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        applyEff(ch.eff);
+        showNode(ch.go);
+      });
+      elOpts.appendChild(b);
+    });
+    elNxt.textContent = '';
+    if ('vibrate' in navigator) { try { navigator.vibrate(10); } catch (e) {} }
+  }
+
+  function showEnd(e) {
+    var box = document.createElement('div');
+    box.className = 'cover';
+    box.innerHTML = '<div class="coverbox" style="max-width:560px">' +
+      '<div class="k">' + e.k + '</div>' +
+      '<h1 style="font-size:38px">' + e.t + '</h1>' +
+      '<p style="font-size:14px;line-height:2.1;color:#a9c0d8;white-space:pre-wrap">' + e.p + '</p>' +
+      '<button id="reBtn" style="margin-top:26px">重新来过</button></div>';
+    document.body.appendChild(box);
+    requestAnimationFrame(function () { box.style.opacity = 1; });
+    box.querySelector('#reBtn').addEventListener('click', function () { location.reload(); });
+    SAVE && localStorage.removeItem(SAVE);
+  }
+
+  document.addEventListener('click', function () {
+    if (!cur || elOpts.children.length) return;
+    if (typing) { clearInterval(tmr); done(); return; }
+    nextLine();
+  });
+
+  /* ================= 背景 ================= */
+  var cv = document.getElementById('bgg'), ctx = cv.getContext('2d');
+  var W, H, bgMode = 'sea', t0 = performance.now(), dots = [];
+  function resize() {
+    W = cv.width = Math.floor(window.innerWidth * Math.min(devicePixelRatio, 2));
+    H = cv.height = Math.floor(window.innerHeight * Math.min(devicePixelRatio, 2));
+    cv.style.width = window.innerWidth + 'px';
+    cv.style.height = window.innerHeight + 'px';
+    dots = [];
+    for (var i = 0; i < 90; i++) dots.push({ x: Math.random() * W, y: Math.random() * H * .5, r: Math.random() * 1.4 * Math.min(devicePixelRatio, 2), a: Math.random() });
+  }
+  window.addEventListener('resize', resize); resize();
+
+  var TINTS = {
+    sea: [[5, 10, 20], [12, 30, 52], [18, 52, 78], [10, 24, 40]],
+    atoll: [[8, 8, 16], [26, 22, 44], [40, 30, 58], [14, 12, 26]],
+    night: [[3, 5, 12], [8, 14, 30], [14, 26, 48], [6, 10, 22]],
+    storm: [[4, 6, 12], [12, 16, 26], [22, 26, 38], [8, 10, 18]],
+    shore: [[10, 14, 22], [30, 46, 62], [70, 92, 96], [22, 34, 40]]
+  };
+  function setBg(m) { bgMode = m; }
+  function triplet(t, k) { return 'rgb(' + Math.round(t[0] * k) + ',' + Math.round(t[1] * k) + ',' + Math.round(t[2] * k) + ')'; }
+
+  function draw(now) {
+    var t = (now - t0) / 1000;
+    var T = TINTS[bgMode] || TINTS.sea;
+    var g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, triplet(T[0], 1));
+    g.addColorStop(.42, triplet(T[1], 1));
+    g.addColorStop(.62, triplet(T[2], .55));
+    g.addColorStop(1, triplet(T[3], 1));
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    // stars / embers
+    var starCol = bgMode === 'atoll' ? '255,196,120' : (bgMode === 'storm' ? '150,170,190' : '190,225,255');
+    dots.forEach(function (s) {
+      var a = .12 + .55 * Math.abs(Math.sin(t * .6 + s.a * 9));
+      ctx.fillStyle = 'rgba(' + starCol + ',' + (a * (bgMode === 'shore' ? .22 : .5)) + ')';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.283); ctx.fill();
+    });
+
+    // horizon glow
+    var hy = H * .52;
+    var hg = ctx.createRadialGradient(W * .5, hy, 0, W * .5, hy, Math.max(W, H) * .55);
+    hg.addColorStop(0, 'rgba(' + T[2].join(',') + ',.34)');
+    hg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = hg; ctx.fillRect(0, 0, W, H * .8);
+
+    // sea
+    var base = bgMode === 'storm' ? H * .50 : hy;
+    for (var k = 0; k < 6; k++) {
+      ctx.beginPath();
+      ctx.moveTo(0, base + k * 16 * devicePixelRatio);
+      for (var x = 0; x <= W; x += 14 * devicePixelRatio) {
+        var amp = bgMode === 'storm' ? (9 + k * 4) : (3 + k * 1.6);
+        var y = base + k * 16 * devicePixelRatio + Math.sin(x * .0035 + t * (.5 + k * .16) + k * 1.7) * amp * devicePixelRatio;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+      ctx.fillStyle = 'rgba(' + T[1].join(',') + ',' + (.20 + k * .11) + ')';
+      ctx.fill();
+    }
+
+    // atoll lights
+    if (bgMode === 'atoll') {
+      for (var i = 0; i < 26; i++) {
+        var lx = (i * 97 % W);
+        var ly = hy - 6 * devicePixelRatio + Math.sin(i * 2.1) * 5;
+        var flick = .5 + .5 * Math.sin(t * 3 + i);
+        ctx.fillStyle = 'rgba(255,190,110,' + (.25 + .5 * flick) + ')';
+        ctx.fillRect(lx, ly, 3 * devicePixelRatio, 2 * devicePixelRatio);
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  requestAnimationFrame(draw);
+
+  /* ================= 启动 ================= */
+  function hideCover() { elCover.classList.add('hide'); }
+  var saved = null;
+  try { var raw = localStorage.getItem(SAVE); if (raw) saved = JSON.parse(raw); } catch (e) {}
+  if (saved && N[saved.n]) document.getElementById('continueBtn').style.display = 'block';
+
+  document.getElementById('startBtn').addEventListener('click', function () {
+    st = { water: 62, food: 55, trust: 40 };
+    hud(); hideCover(); showNode('start');
+  });
+  document.getElementById('continueBtn').addEventListener('click', function () {
+    if (saved && saved.st) { st = saved.st; }
+    hud(); hideCover(); showNode(saved && N[saved.n] ? saved.n : 'start');
+  });
+  hud();
+})();
+</script>
+</body>
+</html>
