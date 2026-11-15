@@ -30,7 +30,10 @@
     toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2200);
   }
 
-  var EGG = '<span class="brandmark">糊</span>';
+  var EGG = '<svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">' +
+    '<rect width="26" height="26" rx="7" fill="#0d1117"/>' +
+    '<path d="M8.6 17.6 13 8.4l4.4 9.2" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M10.9 14.2h4.2" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/></svg>';
 
   function paintEggs() {
     $$('[data-egg]').forEach(function (n) { n.innerHTML = EGG; });
