@@ -121,6 +121,16 @@ body{font-family:"Songti SC","STSong","SimSun",Georgia,serif;color:#e8ddc8;user-
   display:flex;align-items:center;justify-content:center;font-size:13px;letter-spacing:1px;
   line-height:1.15;margin-bottom:18px;transform:rotate(-4deg);writing-mode:vertical-rl;
   background:rgba(180,50,36,.08)}
+.cover.show .seal{animation:sealIn .52s cubic-bezier(.2,.9,.3,1.25) forwards}
+@keyframes sealIn{
+  0%{opacity:0;transform:rotate(-16deg) scale(.35)}
+  100%{opacity:1;transform:rotate(-4deg) scale(1)}}
+.cover.show h1{animation:titleIn .62s ease-out .1s both}
+@keyframes titleIn{
+  0%{opacity:0;transform:translateY(12px) scale(.94);letter-spacing:18px}
+  100%{opacity:1;transform:none;letter-spacing:8px}}
+.cover.show .body,.cover.show button{animation:fadeUp .6s ease-out .26s both}
+@keyframes fadeUp{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:none}}
 
 /* ---------- 提示 ---------- */
 #toast{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);z-index:80;pointer-events:none;
@@ -133,6 +143,74 @@ body{font-family:"Songti SC","STSong","SimSun",Georgia,serif;color:#e8ddc8;user-
   border:1px solid rgba(200,162,74,.4);background:rgba(24,18,12,.82)}
 #muteBtn.on{display:flex}
 #muteBtn.off{color:#6d6459;border-color:rgba(109,100,89,.35)}
+
+/* ---------- 特效 ---------- */
+#fx{position:fixed;inset:0;pointer-events:none;z-index:55;overflow:hidden}
+.fnum{position:fixed;font-size:17px;letter-spacing:1px;font-variant-numeric:tabular-nums;
+  pointer-events:none;white-space:nowrap;will-change:transform,opacity;
+  text-shadow:0 0 9px rgba(0,0,0,.95),0 2px 3px #000;
+  animation:fnumUp 1s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes fnumUp{
+  0%{opacity:0;transform:translate(-50%,-30%) scale(.55)}
+  18%{opacity:1;transform:translate(-50%,-74%) scale(1.18)}
+  40%{transform:translate(-50%,-94%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-200%) scale(.9)}}
+.spark{position:fixed;border-radius:50%;pointer-events:none;box-shadow:0 0 7px currentColor;
+  animation:sparkFly .62s cubic-bezier(.18,.8,.32,1) forwards}
+@keyframes sparkFly{
+  0%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(calc(-50% + var(--dx,0px)),calc(-50% + var(--dy,-20px))) scale(.18)}}
+.slash{position:fixed;width:78px;height:3px;border-radius:3px;pointer-events:none;
+  transform-origin:center;animation:slashIn .36s ease-out forwards;
+  filter:drop-shadow(0 0 8px rgba(255,225,180,.95))}
+@keyframes slashIn{
+  0%{opacity:0;transform:translate(-50%,-50%) rotate(var(--r,-28deg)) scaleX(.15)}
+  32%{opacity:1;transform:translate(-50%,-50%) rotate(var(--r,-28deg)) scaleX(1.1)}
+  100%{opacity:0;transform:translate(-50%,-50%) rotate(var(--r,-28deg)) scaleX(1.5)}}
+.streak{position:fixed;height:3px;border-radius:3px;pointer-events:none;transform-origin:0 50%;
+  filter:drop-shadow(0 0 8px currentColor);animation:streakIn .32s ease-out forwards}
+@keyframes streakIn{
+  0%{opacity:0;clip-path:inset(0 100% 0 0)}
+  45%{opacity:1;clip-path:inset(0 0 0 0)}
+  100%{opacity:0;clip-path:inset(0 0 0 0)}}
+.ring{position:fixed;border-radius:50%;border:2px solid;pointer-events:none;
+  transform:translate(-50%,-50%);box-shadow:0 0 16px currentColor;
+  animation:ringOut .66s ease-out forwards}
+@keyframes ringOut{
+  0%{opacity:.95;transform:translate(-50%,-50%) scale(.3)}
+  70%{opacity:.45}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(2.35)}}
+.orb{position:fixed;border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);
+  box-shadow:0 0 16px 5px currentColor;z-index:57;
+  transition:left .44s cubic-bezier(.28,.78,.35,1),top .44s cubic-bezier(.28,.78,.35,1),
+    transform .44s ease-in,opacity .44s ease-in}
+.flash{position:fixed;inset:0;pointer-events:none;z-index:70;animation:flashOut .5s ease-out forwards}
+@keyframes flashOut{0%{opacity:.62}100%{opacity:0}}
+.arrow{position:fixed;width:2px;height:30px;border-radius:2px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,228,180,0),#ffe4b4);
+  box-shadow:0 0 9px rgba(255,215,150,.95);transform:translate(-50%,-120px);
+  animation:arrowFall .46s linear forwards}
+@keyframes arrowFall{
+  0%{opacity:0;transform:translate(-50%,-92px)}
+  20%{opacity:1}
+  100%{opacity:0;transform:translate(-50%,30px)}}
+.banner{position:fixed;left:0;right:0;top:46%;pointer-events:none;z-index:56;text-align:center;
+  font-size:25px;letter-spacing:9px;color:#f0d79a;
+  text-shadow:0 0 22px rgba(240,200,110,.65),0 0 46px rgba(200,90,50,.35);
+  animation:bannerIn .95s cubic-bezier(.2,.7,.3,1) forwards}
+@keyframes bannerIn{
+  0%{opacity:0;transform:translateY(-50%) scale(.86);filter:blur(7px)}
+  22%{opacity:1;transform:translateY(-50%) scale(1);filter:blur(0)}
+  72%{opacity:1}
+  100%{opacity:0;transform:translateY(-50%) scale(1.06)}}
+#scene.shk{animation:shk .42s cubic-bezier(.36,.07,.19,.97)}
+@keyframes shk{
+  0%,100%{transform:translate(0,0)}
+  12%{transform:translate(calc(var(--sh,5px) * -.9),2px)}
+  30%{transform:translate(calc(var(--sh,5px) * .8),-2px)}
+  48%{transform:translate(calc(var(--sh,5px) * -.55),1px)}
+  68%{transform:translate(calc(var(--sh,5px) * .35),-1px)}
+  86%{transform:translate(calc(var(--sh,5px) * -.18),0)}}
 </style>
 </head>
 <body>
@@ -363,6 +441,144 @@ function sfx(kind){
   }catch(e){}
 }
 
+/* ==================== 特效 ==================== */
+var FX=null;
+function fxL(){
+  if(!FX || !FX.parentNode){
+    FX=document.createElement('div'); FX.id='fx';
+    document.body.appendChild(FX);
+  }
+  return FX;
+}
+function rct(el){
+  if(!el || !el.getBoundingClientRect) return null;
+  var r=el.getBoundingClientRect();
+  return {x:r.left+r.width/2, y:r.top+r.height/2, w:r.width, h:r.height};
+}
+function rctQ(sel){ return rct(document.querySelector(sel)); }
+function rctI(sel,i){ var a=document.querySelectorAll(sel); return rct(a[i]); }
+function fxKill(el,ms){
+  setTimeout(function(){ if(el && el.parentNode) el.parentNode.removeChild(el); }, ms);
+}
+function fxNum(p,txt,color,size){
+  if(!p) return;
+  var d=document.createElement('div');
+  d.className='fnum'; d.textContent=txt;
+  d.style.color=color || '#ffcf6b';
+  d.style.fontSize=(size || 17)+'px';
+  d.style.left=p.x+'px'; d.style.top=p.y+'px';
+  fxL().appendChild(d); fxKill(d,1000);
+}
+function fxSpark(p,n,color,pow){
+  if(!p) return;
+  var L=fxL();
+  if(L.childElementCount>170) return;
+  n=n || 10; pow=pow || 1;
+  for(var i=0;i<n;i++){
+    var a=Math.random()*6.2832, r=(12+Math.random()*34)*pow;
+    var sz=2+Math.random()*3;
+    var s=document.createElement('i');
+    s.className='spark';
+    s.style.left=p.x+'px'; s.style.top=p.y+'px';
+    s.style.width=sz+'px'; s.style.height=sz+'px';
+    s.style.background=color; s.style.color=color;
+    s.style.setProperty('--dx',(Math.cos(a)*r).toFixed(0)+'px');
+    s.style.setProperty('--dy',(Math.sin(a)*r).toFixed(0)+'px');
+    s.style.animationDelay=(Math.random()*70).toFixed(0)+'ms';
+    L.appendChild(s); fxKill(s,820);
+  }
+}
+function fxSlash(p,color,deg){
+  if(!p) return;
+  var s=document.createElement('div');
+  s.className='slash';
+  s.style.left=p.x+'px'; s.style.top=p.y+'px';
+  s.style.setProperty('--r',(deg===undefined? -28 : deg)+'deg');
+  s.style.background='linear-gradient(90deg,transparent,'+color+',transparent)';
+  fxL().appendChild(s); fxKill(s,480);
+}
+function fxStreak(a,b,color){
+  if(!a || !b) return;
+  var dx=b.x-a.x, dy=b.y-a.y, len=Math.max(24,Math.sqrt(dx*dx+dy*dy));
+  var s=document.createElement('div');
+  s.className='streak';
+  s.style.left=a.x+'px'; s.style.top=a.y+'px';
+  s.style.width=len+'px'; s.style.color=color;
+  s.style.background='linear-gradient(90deg,rgba(255,255,255,0),'+color+')';
+  s.style.transform='rotate('+(Math.atan2(dy,dx)*180/Math.PI).toFixed(1)+'deg)';
+  fxL().appendChild(s); fxKill(s,470);
+}
+function fxRing(p,color,size){
+  if(!p) return;
+  var sz=size || 30;
+  var r=document.createElement('div');
+  r.className='ring';
+  r.style.left=p.x+'px'; r.style.top=p.y+'px';
+  r.style.width=sz+'px'; r.style.height=sz+'px';
+  r.style.borderColor=color; r.style.color=color;
+  fxL().appendChild(r); fxKill(r,700);
+}
+function fxOrb(a,b,color,sz){
+  if(!a || !b) return;
+  var s=sz || 13;
+  var o=document.createElement('div');
+  o.className='orb';
+  o.style.cssText='left:'+a.x+'px;top:'+a.y+'px;width:'+s+'px;height:'+s+'px;'
+    +'background:'+color+';color:'+color;
+  fxL().appendChild(o);
+  o.getBoundingClientRect();
+  setTimeout(function(){
+    o.style.left=b.x+'px'; o.style.top=b.y+'px';
+    o.style.transform='translate(-50%,-50%) scale(.32)';
+    o.style.opacity='0';
+  }, 20);
+  fxKill(o,650);
+}
+function fxFlash(css,ms){
+  var f=document.createElement('div');
+  f.className='flash';
+  f.style.background=css;
+  f.style.animationDuration=(ms || 500)+'ms';
+  document.body.appendChild(f); fxKill(f,(ms || 500)+90);
+}
+function fxShake(amt){
+  var t=$('scene');
+  if(!t) return;
+  t.style.setProperty('--sh',(amt || 5)+'px');
+  t.classList.remove('shk');
+  if(t.offsetWidth) t.offsetWidth;
+  t.classList.add('shk');
+  clearTimeout(fxShake.t);
+  fxShake.t=setTimeout(function(){ t.classList.remove('shk'); },430);
+}
+function fxBanner(txt,color){
+  var b=document.createElement('div');
+  b.className='banner'; b.textContent=txt;
+  if(color) b.style.color=color;
+  fxL().appendChild(b); fxKill(b,1010);
+}
+function fxArrows(p,n){
+  if(!p) return;
+  var L=fxL();
+  for(var i=0;i<(n || 8);i++){
+    var a=document.createElement('div');
+    a.className='arrow';
+    a.style.left=(p.x+(Math.random()*170-85)).toFixed(0)+'px';
+    a.style.top=p.y+'px';
+    a.style.animationDelay=(Math.random()*190).toFixed(0)+'ms';
+    L.appendChild(a); fxKill(a,780);
+  }
+}
+function fxFire(p,n){
+  if(!p) return;
+  fxRing(p,'rgba(255,130,60,.85)',120);
+  for(var i=0;i<(n || 4);i++){
+    var q={x:p.x+(Math.random()*140-70), y:p.y+(Math.random()*30-15)};
+    fxSpark(q,7,'#ff8a2a',1.45);
+    fxSpark(q,3,'#ffd479',1.1);
+  }
+}
+
 /* ==================== 抽牌 ==================== */
 function draw(n){
   for(var i=0;i<n;i++){
@@ -455,25 +671,55 @@ function unitHTML(u, i, side){
 function healMe(n){
   var before=S.hp;
   S.hp=Math.min(S.maxHp,S.hp+n);
-  if(S.hp>before) log('主公回复 '+(S.hp-before)+' 点体力。');
+  if(S.hp>before){
+    var d=S.hp-before;
+    log('主公回复 '+d+' 点体力。');
+    var p=rctQ('.herobar.me');
+    fxNum({x:p.x-16,y:p.y},'+'+d,'#7fe0a0',18);
+    fxRing(p,'#6fd28f',44);
+    fxSpark(p,6,'#8fe6a8',.75);
+  }
 }
 function hitMe(n){
   if(n<=0) return;
+  var p=rctQ('.herobar.me');
   var left=n;
   if(S.armor>0){
     var use=Math.min(S.armor,left);
     S.armor-=use; left-=use;
-    if(use>0) log('护甲挡下 '+use+' 点。');
+    if(use>0){
+      log('护甲挡下 '+use+' 点。');
+      fxNum({x:p.x+22,y:p.y},'甲'+use,'#9fc4ff',15);
+      fxRing(p,'#8fb8ff',50);
+    }
   }
-  if(left>0){ S.hp-=left; log('主公受到 '+left+' 点伤害。'); }
+  if(left>0){
+    S.hp-=left;
+    log('主公受到 '+left+' 点伤害。');
+    fxNum({x:p.x-20,y:p.y},'-'+left,'#ff6b5a',24);
+    fxSpark(p,13,'#ff5a48',1.2);
+    fxShake(Math.min(12,4+left));
+    fxFlash('radial-gradient(circle at 50% 74%,rgba(190,45,28,.6),transparent 68%)',420);
+  }
   if(S.hp<=0){ S.hp=0; S.phase='over'; render(); setTimeout(loseGame,320); return true; }
   return false;
 }
 function hitFoe(n){
   if(n<=0) return;
+  var p=rctQ('.herobar.foe');
   S.foeHp-=n;
   log((S.foeName||'敌方')+' 受到 '+n+' 点伤害。');
-  if(S.foeHp<=0){ S.foeHp=0; S.phase='over'; render(); setTimeout(winChapter,320); return true; }
+  if(p){
+    fxNum(p,'-'+n,'#ffcf6b',24);
+    fxSpark(p,14,'#ffd479',1.2);
+    fxShake(Math.min(10,3+n));
+  }
+  if(S.foeHp<=0){
+    S.foeHp=0; S.phase='over';
+    if(p){ fxSpark(p,24,'#ffe6a8',1.7); fxRing(p,'#ffd479',130); }
+    fxFlash('radial-gradient(circle at 50% 16%,rgba(255,205,120,.65),transparent 70%)',560);
+    render(); setTimeout(winChapter,320); return true;
+  }
   return false;
 }
 
@@ -498,6 +744,8 @@ function beginChapter(i){
   draw(4);
   $('cover').classList.remove('show');
   $('muteBtn').className = (muted?'off':'') + (AC?' on':'');
+  fxFlash('radial-gradient(circle at 50% 45%,rgba(200,160,80,.35),rgba(0,0,0,.62))',700);
+  fxBanner('第 '+(i+1)+' 战 · '+ch.n);
   nextTurn(true);
 }
 
@@ -516,6 +764,7 @@ function nextTurn(first){
   if(!first) draw(1);
   if(S.phase!=='over') S.phase='play';
   render();
+  if(!first) fxBanner('我军回合','#f0d79a');
 }
 
 /* ==================== 出牌 ==================== */
@@ -534,6 +783,7 @@ function playHand(i){
   var id=S.hand[i], c=DB[id];
   if(c.t==='gen' && S.field.length>=3){ toast('战场最多三位武将'); return false; }
 
+  var ph=rctI('#hand .hcard', i);
   S.hand.splice(i,1);
   S.mana-=c.c;
   S.handSel=-1;
@@ -550,30 +800,55 @@ function playHand(i){
     castSpell(id);
   }
   render();
+  if(c.t==='gen'){
+    var pf=rctI('#myField .unit', S.field.length-1);
+    fxOrb(ph,pf,'#ffd479',16);
+    fxRing(pf,'#ffd479',48);
+    fxSpark(pf,9,'#ffcf6b',.9);
+  } else {
+    var pst = (id==='huoji') ? rctQ('#foeField')
+      : (id==='jianyu' || id==='jixi' || id==='luanshi') ? rctQ('.herobar.foe')
+      : (id==='jidongfeng') ? rctQ('#hand') : rctQ('.herobar.me');
+    fxOrb(ph,pst,'#8fc8ff',15);
+  }
   return true;
 }
 
 function castSpell(id){
   var c=DB[id];
   if(id==='huoji'){
+    var pf=rctQ('#foeField');
     log('【火计】烈焰席卷敌阵。');
     for(var i=S.foeField.length-1;i>=0;i--){
       S.foeField[i].hp-=2;
       if(S.foeField[i].hp<=0){ log('敌方【'+DB[S.foeField[i].id].n+'】阵亡。'); S.foeField.splice(i,1); }
     }
     sfx('hurt');
+    fxFire(pf,4);
   } else if(id==='jianyu'){
     log('【箭雨】万箭齐发。');
     sfx('hurt');
+    var ph2=rctQ('.herobar.foe');
+    fxArrows(ph2,9);
+    fxSlash(ph2,'#ffe6b0',-16);
     hitFoe(4);
   } else if(id==='taoyuan'){
     log('【桃园结义】兄弟齐心。');
     for(var j=0;j<S.field.length;j++){ S.field[j].atk+=1; S.field[j].hp+=1; S.field[j].maxHp+=1; }
     sfx('card');
+    for(var k=0;k<S.field.length;k++){
+      var pu=rctI('#myField .unit',k);
+      fxRing(pu,'#ffd479',46);
+      fxNum({x:pu.x,y:pu.y-14},'+1/+1','#ffd479',15);
+    }
   } else if(id==='kongcheng'){
     S.armor+=4;
     log('【空城计】获得 4 点护甲。');
     sfx('card');
+    var pm=rctQ('.herobar.me');
+    fxRing(pm,'#8fb8ff',72);
+    fxRing(pm,'#cfe2ff',104);
+    fxNum({x:pm.x+22,y:pm.y},'甲+4','#9fc4ff',16);
   } else if(id==='guaguo'){
     healMe(6);
     sfx('card');
@@ -581,6 +856,9 @@ function castSpell(id){
     draw(2);
     log('【借东风】抽了两张牌。');
     sfx('card');
+    var phd=rctQ('#hand');
+    fxSpark(phd,10,'#a8d8ff',1);
+    fxRing(phd,'#a8d8ff',120);
   }
 }
 
@@ -608,18 +886,28 @@ function attackFoeUnit(ti){
   for(var i=0;i<S.foeField.length;i++){ if(S.foeField[i].taunt){ hasTaunt=true; tauntIdx=i; break; } }
   if(hasTaunt && !t.taunt){ toast('敌有据守之将，须先破他'); return; }
 
+  var pa=rctI('#myField .unit', S.sel);
+  var pt=rctI('#foeField .unit', ti);
   a.canAtk=false;
   var an=DB[a.id], tn=DB[t.id];
   log('【'+an.n+'】突袭【'+tn.n+'】。');
   var far = (an.kw.indexOf('远射')>=0);
   t.hp-=a.atk;
   sfx('hit');
+  fxStreak(pa,pt,'rgba(255,225,160,.95)');
+  fxSlash(pt,'#ffe6b0',-30);
+  fxSpark(pt,11,'#ffb060',1.1);
+  fxNum(pt,'-'+a.atk,'#ffa07a',18);
   if(t.hp<=0){
     log('敌方【'+tn.n+'】阵亡。');
     S.foeField.splice(ti,1);
+    fxSpark(pt,20,'#ff9a6a',1.5);
+    fxRing(pt,'#ff8a5a',84);
   } else if(!far){
     a.hp-=t.atk;
-    if(a.hp<=0){ log('我方【'+an.n+'】力战而亡。'); S.field.splice(S.sel,1); }
+    fxNum(pa,'-'+t.atk,'#ff6b5a',16);
+    fxSpark(pa,8,'#ff7a5a',.85);
+    if(a.hp<=0){ log('我方【'+an.n+'】力战而亡。'); S.field.splice(S.sel,1); fxRing(pa,'#ff6b5a',80); }
   }
   S.sel=-1;
   render();
@@ -635,11 +923,16 @@ function attackFace(){
   }
   var a=S.field[S.sel];
   if(!a) return;
+  var pa=rctI('#myField .unit', S.sel);
+  var pt=rctQ('.herobar.foe');
   a.canAtk=false;
   var an=DB[a.id];
   log('【'+an.n+'】直取敌首。');
   S.sel=-1;
   sfx('hit');
+  fxStreak(pa,pt,'rgba(255,225,160,.95)');
+  fxSlash(pt,'#ffe6b0',-24);
+  fxSpark(pt,12,'#ffcf6b',1.1);
   if(hitFoe(a.atk)) return;
   render();
 }
@@ -655,6 +948,8 @@ function endTurn(){
   S.foeMana=Math.min(S.turn,10);
   foeDraw(1);
   render();
+  fxBanner('敌军回合','#e08a6a');
+  fxFlash('radial-gradient(circle at 50% 38%,rgba(120,20,10,.32),transparent 72%)',520);
   setTimeout(foeLoop, 620);
 }
 
@@ -704,6 +999,7 @@ function foeLoop(){
 
 function foePlay(i){
   var id=S.foeHand[i], c=DB[id];
+  var po=rctQ('.herobar.foe');
   S.foeHand.splice(i,1);
   S.foeMana-=c.c;
   if(c.t==='gen'){
@@ -711,6 +1007,9 @@ function foePlay(i){
       canAtk:(c.kw.indexOf('突袭')>=0), taunt:(c.kw.indexOf('据守')>=0) });
     log('敌方【'+c.n+'】上场，'+c.a+'/'+c.h+'。');
     sfx('card');
+    var pff=rctQ('#foeField');
+    fxOrb(po,pff,'#d05040',14);
+    fxRing(pff,'#d05040',84);
   } else {
     S.foeUsed.push(id);
     if(id==='huoji'){
@@ -720,22 +1019,30 @@ function foePlay(i){
         if(S.field[k].hp<=0){ log('我方【'+DB[S.field[k].id].n+'】阵亡。'); S.field.splice(k,1); }
       }
       sfx('hurt');
+      fxFire(rctQ('#myField'),3);
     } else if(id==='jixi'||id==='luanshi'){
       log('敌方【'+c.n+'】突袭主公。');
       sfx('hurt');
+      var pm=rctQ('.herobar.me');
+      fxStreak(po,pm,'rgba(255,120,90,.92)');
+      fxSlash(pm,'#ff8a6a',-20);
       hitMe(id==='luanshi'?3:2);
     } else if(id==='jianyu'){
       log('敌方【箭雨】袭来。');
       sfx('hurt');
+      fxArrows(rctQ('.herobar.me'),8);
       hitMe(4);
     } else if(id==='guaguo'){
       healFoe(6);
     } else if(id==='kongcheng'){
       S.foeArmor+=4;
       log('敌方获得 4 点护甲。');
+      fxRing(po,'#8fb8ff',74);
+      fxNum({x:po.x+22,y:po.y},'甲+4','#9fc4ff',15);
     } else if(id==='taoyuan'){
       for(var m=0;m<S.foeField.length;m++){ S.foeField[m].atk+=1; S.foeField[m].hp+=1; }
       log('敌方【'+c.n+'】全军振奋。');
+      for(var n2=0;n2<S.foeField.length;n2++) fxRing(rctI('#foeField .unit',n2),'#ffb060',44);
     }
   }
 }
@@ -743,7 +1050,12 @@ function foePlay(i){
 function healFoe(n){
   var b=S.foeHp;
   S.foeHp=Math.min(S.foeMaxHp,S.foeHp+n);
-  if(S.foeHp>b) log('敌方回复 '+(S.foeHp-b)+' 点体力。');
+  if(S.foeHp>b){
+    var p=rctQ('.herobar.foe');
+    log('敌方回复 '+(S.foeHp-b)+' 点体力。');
+    fxNum({x:p.x+22,y:p.y},'+'+(S.foeHp-b),'#7fe0a0',17);
+    fxRing(p,'#6fd28f',46);
+  }
 }
 
 function foeAttack(i){
@@ -751,6 +1063,7 @@ function foeAttack(i){
   if(!u) return;
   u.canAtk=false;
   var c=DB[u.id];
+  var pu=rctI('#foeField .unit', i);
 
   // 有据守先打据守
   var target=-1, taunt=-1;
@@ -765,18 +1078,27 @@ function foeAttack(i){
   if(target>=0){
     var t=S.field[target];
     var tn=DB[t.id];
+    var pt=rctI('#myField .unit', target);
     log('敌方【'+c.n+'】攻击我方【'+tn.n+'】。');
     t.hp-=u.atk;
     sfx('hit');
+    fxStreak(pu,pt,'rgba(255,130,95,.92)');
+    fxSlash(pt,'#ff9a6a',-30);
+    fxSpark(pt,10,'#ff8a5a',1);
+    fxNum(pt,'-'+u.atk,'#ff8f7a',18);
     var far=(c.kw.indexOf('远射')>=0);
     if(t.hp<=0){
       log('我方【'+tn.n+'】阵亡。');
       S.field.splice(target,1);
+      fxSpark(pt,18,'#ff9a6a',1.4);
+      fxRing(pt,'#ff7a5a',82);
     } else if(!far && S.field.length){
       // 我方反击
       u.hp-=t.atk;
+      fxNum(pu,'-'+t.atk,'#ff6b5a',16);
       if(u.hp<=0){
         log('敌方【'+c.n+'】被我军拼死。');
+        fxRing(pu,'#ffb060',80);
         var idx=S.foeField.indexOf(u);
         if(idx>=0) S.foeField.splice(idx,1);
       }
@@ -784,6 +1106,8 @@ function foeAttack(i){
   } else {
     log('敌方【'+c.n+'】直取主公。');
     sfx('hurt');
+    fxStreak(pu,rctQ('.herobar.me'),'rgba(255,120,90,.92)');
+    fxSlash(rctQ('.herobar.me'),'#ff8a6a',-20);
     hitMe(u.atk);
   }
 }
@@ -794,6 +1118,12 @@ function winChapter(){
   S.endShown=true;
   S.phase='over';
   sfx('win');
+  fxFlash('radial-gradient(circle at 50% 42%,rgba(255,215,130,.62),transparent 74%)',760);
+  fxShake(6);
+  for(var gi=0;gi<4;gi++){
+    fxSpark({x:window.innerWidth/2+(Math.random()*170-85), y:window.innerHeight*.42},
+      9,'#ffd479',1.5);
+  }
   var ch=CH[S.chapter];
   // 恢复
   var back=Math.min(10, S.maxHp-S.hp);
@@ -824,6 +1154,8 @@ function loseGame(){
   S.endShown=true;
   S.phase='over';
   render();
+  fxFlash('radial-gradient(circle,rgba(150,25,18,.66),rgba(8,4,2,.88))',900);
+  fxShake(13);
   document.title='END::兵败';
   showCover('兵败','',
     '主公力竭，大旗倒地。这一局到此为止——牌还在，再来一次。',
