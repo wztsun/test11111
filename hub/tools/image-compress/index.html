@@ -116,9 +116,11 @@
     var o = await F.loadImage(file);
     var img = o.img;
     var w0 = img.naturalWidth, h0 = img.naturalHeight;
-    var scale = 1, best = null;
-    for (var round = 0; round < 14; round++){
+    var scale = 1, best = null, smallest = null;
+    for (var round = 0; round < 18; round++){
       var w = Math.max(1, Math.round(w0 * scale)), h = Math.max(1, Math.round(h0 * scale));
+      // 不要为了凑体积把图缩成一个看不清的小方块
+      if (round > 0 && Math.min(w, h) < 120) break;
       var cv = document.createElement('canvas');
       cv.width = w; cv.height = h;
       var ctx = cv.getContext('2d');
@@ -134,16 +136,17 @@
         if (b.size <= targetBytes){ found = b; lo = mid; } else { hi = mid; }
       }
       if (found){ best = found; break; }
-      scale *= 0.84;
-      if (Math.round(w0 * scale) < 24) break;
+      smallest = await tryEncode(cv, type, 0.3);
+      scale *= 0.82;
     }
     URL.revokeObjectURL(o.url);
-    if (!best){
-      var cv2 = document.createElement('canvas');
-      cv2.width = 16; cv2.height = 16; cv2.getContext('2d').fillRect(0, 0, 16, 16);
-      best = await tryEncode(cv2, type, 0.3);
-    }
-    return best;
+    if (best) return { blob: best, reached: true };
+    if (smallest) return { blob: smallest, reached: false };
+    var cv2 = document.createElement('canvas');
+    cv2.width = 64; cv2.height = 64;
+    var c2 = cv2.getContext('2d');
+    c2.fillStyle = '#fff'; c2.fillRect(0, 0, 64, 64);
+    return { blob: await tryEncode(cv2, type, 0.3), reached: false };
   }
 
   go.onclick = async function(){
@@ -161,11 +164,12 @@
       item.querySelector('.nm').textContent = f.name;
       res.appendChild(item);
       try {
-        var blob, finalName, skipped = false;
+        var blob, finalName, skipped = false, reached = true;
         if (f.size <= target){
           blob = f; finalName = f.name; skipped = true;
         } else {
-          blob = await compressOne(f, target, type);
+          var r = await compressOne(f, target, type);
+          blob = r.blob; reached = r.reached;
           finalName = F.saveName(f.name, ext);
         }
         var a = document.createElement('button');
@@ -175,6 +179,9 @@
         var stat = item.querySelector('.stat');
         if (skipped){
           stat.textContent = F.fmtSize(f.size) + ' · 本来就在 ' + Math.round(target / 1024) + 'KB 以内，没动它';
+        } else if (!reached){
+          stat.textContent = F.fmtSize(f.size) + ' → ' + F.fmtSize(blob.size) +
+            ' · 压不到 ' + Math.round(target / 1024) + 'KB 了，这已经是画面还能看的最小体积';
         } else {
           stat.textContent = F.fmtSize(f.size) + ' → ' + F.fmtSize(blob.size);
           var dl = document.createElement('span');
