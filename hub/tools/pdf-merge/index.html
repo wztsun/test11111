@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>PDF 合并与拆分在线免费：几个 PDF 合成一个，或只取某几页 - 糊涂蛋工具箱</title>
+<meta name="description" content="PDF 合并、拆分、提取页面，全部免费。几个合同合成一个，或者从一大份里挑出要的那几页。浏览器本地处理，文件不上传服务器。">
+<meta name="keywords" content="pdf合并,pdf拆分,pdf提取页面,多个pdf合成一个,pdf选页,在线pdf工具">
+<link rel="stylesheet" href="../../assets/base.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="logo" href="../../index.html"><span data-egg></span><span>糊涂蛋工具箱</span></a>
+    <div class="spacer"></div>
+    <div class="nav"><a href="./../image-to-pdf/">图片转 PDF</a><a href="./../image-compress/">压缩</a></div>
+  </div>
+
+  <div class="tool-head">
+    <a class="crumb" href="../../index.html">← 全部工具</a>
+    <h1>PDF 合并与拆分</h1>
+    <p>几个 PDF 想合成一份？或者一大份里只想要第 3 页到第 7 页？拖进来选一下就好。本地处理，文件不上传。</p>
+  </div>
+
+  <div class="tool-body card">
+    <div class="pills" id="tabs" style="margin:0 0 16px">
+      <button class="pill on" data-tab="merge">合并成一个</button>
+      <button class="pill" data-tab="extract">提取某几页</button>
+      <button class="pill" data-tab="split">每页拆开</button>
+    </div>
+
+    <div class="drop" id="drop">
+      <p class="big">把 PDF 拖进来，或者点一下选</p>
+      <p class="sub" id="dropSub">按添加顺序合并，进来还能上下调</p>
+      <input type="file" accept="application/pdf,.pdf" multiple>
+    </div>
+
+    <ul class="filelist" id="files"></ul>
+
+    <div class="row" id="mergeOpts">
+      <button class="btn primary" id="go" disabled>合并并下载</button>
+    </div>
+
+    <div class="row" id="extractOpts" style="display:none">
+      <div class="field" style="min-width:210px">
+        <label>要哪些页（从 1 开始）</label>
+        <input type="text" id="range" placeholder="比如 1-3,5,8-10">
+      </div>
+      <button class="btn primary" id="goEx" disabled>提取并下载</button>
+    </div>
+
+    <div class="row" id="splitOpts" style="display:none">
+      <button class="btn primary" id="goSp" disabled>每页拆成一个文件</button>
+    </div>
+
+    <div class="res" id="res"></div>
+
+    <p class="note"><b>三种模式：</b>合并是把多个 PDF 按顺序接起来；提取是从一个 PDF 里挑页，可以写 1-3,5,8-10 这种；每页拆开是把一份 PDF 拆成单页，一页一个文件，方便只看某一页或者单独发出去。</p>
+  </div>
+
+  <div class="related card" style="margin-top:22px">
+    <h3 style="font-size:16px">常见用法</h3>
+    <p class="muted" style="font-size:13.5px;margin:8px 0 0">简历加证书合成一份投递；合同附件接到正文后面；发票一个月几十张合一个报销；投标文件只留要求的章节。加密过的 PDF 会打不开，先用原密码解锁再处理。</p>
+  </div>
+
+  <footer>
+    <div>文件不离开你的设备 · 不上传服务器 · 不存任何记录</div>
+    <div style="margin-top:6px"><a href="../../index.html">回首页</a> · support@hutudan.com</div>
+  </footer>
+</div>
+
+<script src="../../assets/pdf-lib.min.js"></script>
+<script src="../../assets/common.js"></script>
+<script>
+(function(){
+  var F = window.FT, $ = F.$, files = [], busy = false, tab = 'merge';
+  var res = $('#res');
+
+  function render(){
+    var list = $('#files'); list.innerHTML = '';
+    files.forEach(function(f, i){
+      var li = document.createElement('li');
+      li.innerHTML = '<span class="idx">' + (i + 1) + '.</span><span class="nm"></span><span class="sz"></span>' +
+        '<button class="mv" data-d="-1">↑</button><button class="mv" data-d="1">↓</button><button class="rm">✕</button>';
+      li.querySelector('.nm').textContent = f.name;
+      li.querySelector('.sz').textContent = F.fmtSize(f.size);
+      li.querySelector('.idx').style.cssText = 'font-weight:900;color:#f0ab00;min-width:20px';
+      li.querySelector('.rm').onclick = function(e){ e.stopPropagation(); files.splice(i,1); render(); };
+      F.$$('.mv', li).forEach(function(b){
+        b.onclick = function(e){
+          e.stopPropagation();
+          var j = i + (+b.dataset.d);
+          if (j < 0 || j >= files.length) return;
+          var t = files[i]; files[i] = files[j]; files[j] = t; render();
+        };
+      });
+      var hideOrder = (tab !== 'merge');
+      li.querySelector('.idx').style.display = hideOrder ? 'none' : '';
+      F.$$('.mv', li).forEach(function(b){ b.style.display = hideOrder ? 'none' : ''; });
+      list.appendChild(li);
+    });
+    var ok = files.length > 0 && !busy;
+    $('#go').disabled = !(ok && files.length >= 2);
+    $('#goEx').disabled = !(ok && files.length === 1);
+    $('#goSp').disabled = !(ok && files.length === 1);
+  }
+
+  F.setupDrop($('#drop'), function(fs){
+    var pdfs = fs.filter(function(f){ return /pdf/i.test(f.type) || /\.pdf$/i.test(f.name); });
+    if (tab === 'merge') files = files.concat(pdfs);
+    else files = pdfs.slice(0, 1);
+    render();
+  });
+
+  F.$$('#tabs .pill').forEach(function(p){
+    p.onclick = function(){
+      F.$$('#tabs .pill').forEach(function(x){ x.classList.remove('on'); });
+      p.classList.add('on');
+      tab = p.dataset.tab;
+      if (tab !== 'merge' && files.length > 1) files = files.slice(0, 1);
+      $('#mergeOpts').style.display = tab === 'merge' ? '' : 'none';
+      $('#extractOpts').style.display = tab === 'extract' ? '' : 'none';
+      $('#splitOpts').style.display = tab === 'split' ? '' : 'none';
+      $('#dropSub').textContent = tab === 'merge'
+        ? '按添加顺序合并，进来还能上下调'
+        : '只放一个 PDF，多放只认第一个';
+      res.innerHTML = '';
+      render();
+    };
+  });
+
+  function readRange(str, max){
+    var out = [];
+    (str || '').replace(/[，、]/g, ',').split(',').forEach(function(part){
+      part = part.trim();
+      if (!part) return;
+      var m = part.match(/^(\d+)\s*[-~]\s*(\d+)$/);
+      if (m){
+        var a = +m[1], b = +m[2];
+        if (a > b){ var t = a; a = b; b = t; }
+        for (var i = a; i <= b; i++) if (i >= 1 && i <= max) out.push(i - 1);
+      } else if (/^\d+$/.test(part)){
+        var n = +part;
+        if (n >= 1 && n <= max) out.push(n - 1);
+      }
+    });
+    return out.filter(function(v, i, a){ return a.indexOf(v) === i; });
+  }
+
+  function tip(msg){
+    res.innerHTML = '';
+    var d = document.createElement('div');
+    d.className = 'item';
+    d.innerHTML = '<span class="nm"></span>';
+    d.querySelector('.nm').textContent = msg;
+    res.appendChild(d);
+    return d;
+  }
+
+  async function loadDoc(file){
+    var buf = await file.arrayBuffer();
+    return window.PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
+  }
+
+  $('#go').onclick = async function(){
+    if (busy) return;
+    busy = true; render();
+    var item = tip('合并中…');
+    try {
+      var doc = await window.PDFLib.PDFDocument.create();
+      var total = 0;
+      for (var i = 0; i < files.length; i++){
+        var src = await loadDoc(files[i]);
+        var pages = await doc.copyPages(src, src.getPageIndices());
+        pages.forEach(function(p){ doc.addPage(p); });
+        total += pages.length;
+        item.querySelector('.nm').textContent = '合并中… ' + (i + 1) + '/' + files.length;
+      }
+      var bytes = await doc.save();
+      var blob = new Blob([bytes], { type: 'application/pdf' });
+      item.querySelector('.nm').textContent = '好了，' + files.length + ' 个文件共 ' + total + ' 页';
+      item.innerHTML += '<span class="stat">' + F.fmtSize(blob.size) + '</span>';
+      var a = document.createElement('button');
+      a.className = 'btn sm primary'; a.textContent = '下载';
+      a.onclick = function(){ F.download(blob, '合并.pdf'); };
+      item.appendChild(a);
+      item.classList.add('ok');
+      F.toast('合并完成');
+    } catch (e){
+      item.querySelector('.nm').textContent = '失败：' + e.message;
+    }
+    busy = false; render();
+  };
+
+  $('#goEx').onclick = async function(){
+    if (busy || !files.length) return;
+    busy = true; render();
+    var item = tip('提取中…');
+    try {
+      var src = await loadDoc(files[0]);
+      var max = src.getPageCount();
+      var idx = readRange($('#range').value, max);
+      if (!idx.length){ throw new Error('页码没写对，这份 PDF 一共 ' + max + ' 页'); }
+      var doc = await window.PDFLib.PDFDocument.create();
+      var pages = await doc.copyPages(src, idx);
+      pages.forEach(function(p){ doc.addPage(p); });
+      var bytes = await doc.save();
+      var blob = new Blob([bytes], { type: 'application/pdf' });
+      item.querySelector('.nm').textContent = '提取了 ' + idx.length + ' 页（原文件共 ' + max + ' 页）';
+      item.innerHTML += '<span class="stat">' + F.fmtSize(blob.size) + '</span>';
+      var a = document.createElement('button');
+      a.className = 'btn sm primary'; a.textContent = '下载';
+      a.onclick = function(){ F.download(blob, '提取.pdf'); };
+      item.appendChild(a);
+      item.classList.add('ok');
+      F.toast('提取完成');
+    } catch (e){
+      item.querySelector('.nm').textContent = '失败：' + e.message;
+    }
+    busy = false; render();
+  };
+
+  $('#goSp').onclick = async function(){
+    if (busy || !files.length) return;
+    busy = true; render();
+    res.innerHTML = '';
+    try {
+      var src = await loadDoc(files[0]);
+      var max = src.getPageCount();
+      for (var i = 0; i < max; i++){
+        var doc = await window.PDFLib.PDFDocument.create();
+        var pages = await doc.copyPages(src, [i]);
+        doc.addPage(pages[0]);
+        var bytes = await doc.save();
+        (function(pageNo, b){
+          var blob = new Blob([b], { type: 'application/pdf' });
+          var d = document.createElement('div');
+          d.className = 'item ok';
+          d.innerHTML = '<span class="nm">第 ' + pageNo + ' 页</span><span class="size"></span>';
+          d.querySelector('.size').textContent = F.fmtSize(blob.size);
+          var a = document.createElement('button');
+          a.className = 'btn sm primary'; a.textContent = '下载';
+          a.onclick = function(){ F.download(blob, '第' + pageNo + '页.pdf'); };
+          d.appendChild(a);
+          res.appendChild(d);
+        })(i + 1, bytes);
+      }
+      F.toast('拆成 ' + max + ' 个文件了');
+    } catch (e){
+      var d = tip('失败：' + e.message);
+    }
+    busy = false; render();
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>
