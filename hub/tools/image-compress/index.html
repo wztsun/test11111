@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>图片压缩到指定大小（20k/50k/100k）在线免费，不上传 - 糊涂蛋工具箱</title>
+<meta name="description" content="把图片压缩到 20k、50k、100k、200k 任意大小，画质自己看着来。报名字系统要求多少就压到多少，支持批量，全部在浏览器本地处理，文件不上传。">
+<meta name="keywords" content="图片压缩到100k,图片压缩到20k,照片压缩,在线图片压缩,证件照压缩,批量图片压缩">
+<link rel="stylesheet" href="../../assets/base.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="logo" href="../../index.html"><span data-egg></span><span>糊涂蛋工具箱</span></a>
+    <div class="spacer"></div>
+    <div class="nav"><a href="./../image-resize/">改尺寸</a><a href="./../image-convert/">转格式</a></div>
+  </div>
+
+  <div class="tool-head">
+    <a class="crumb" href="../../index.html">← 全部工具</a>
+    <h1>图片压缩到指定大小</h1>
+    <p>系统让你传 20k 以内？压到那个数就行。设个目标大小，剩下的它自己试，画质尽量给你留住。文件不上传，全在浏览器里处理。</p>
+  </div>
+
+  <div class="tool-body card">
+    <div class="drop" id="drop">
+      <p class="big">把图片拖进来，或者点一下选图</p>
+      <p class="sub">支持 jpg / png / webp / gif 截图，可以一次选多张</p>
+      <input type="file" accept="image/*" multiple>
+    </div>
+
+    <ul class="filelist" id="files"></ul>
+
+    <div class="row">
+      <div class="field">
+        <label>目标大小（KB）</label>
+        <input type="number" id="target" min="5" max="20000" value="100">
+      </div>
+      <div class="field">
+        <label>输出格式</label>
+        <select id="fmt">
+          <option value="image/jpeg">JPG（体积最小，没透明）</option>
+          <option value="image/webp">WebP（更小，新设备都认）</option>
+          <option value="image/png">PNG（留透明，体积大）</option>
+        </select>
+      </div>
+      <button class="btn primary" id="go" disabled>开始压缩</button>
+    </div>
+    <div class="pills">
+      <button class="pill" data-kb="10">10k</button>
+      <button class="pill" data-kb="20">20k</button>
+      <button class="pill" data-kb="50">50k</button>
+      <button class="pill on" data-kb="100">100k</button>
+      <button class="pill" data-kb="200">200k</button>
+      <button class="pill" data-kb="500">500k</button>
+      <button class="pill" data-kb="1024">1M</button>
+      <button class="pill" data-kb="2048">2M</button>
+    </div>
+
+    <div class="res" id="res"></div>
+
+    <p class="note"><b>怎么做到的：</b>先在原尺寸上降画质试，还超就一点点缩尺寸，直到压进你要的那个 KB 数。所以 20k 的图会变小一些，这是物理规律，不是偷懒。</p>
+  </div>
+
+  <div class="related card" style="margin-top:22px">
+    <h3 style="font-size:16px">这几种情况你可能还要用到</h3>
+    <p class="muted" style="font-size:13.5px;margin:8px 0 0">考公报名照片一般 20k 以内、教师资格证 200k 以内、社保和政务系统常见 100k 或 500k 以内；投标和论文查重一般按 MB 卡，这个工具也能设。<br>要改证件照尺寸（一寸 295×413、二寸 413×579）请用 <a href="./../image-resize/">图片改尺寸</a>。</p>
+  </div>
+
+  <footer>
+    <div>文件不离开你的设备 · 不上传服务器 · 不存任何记录</div>
+    <div style="margin-top:6px"><a href="../../index.html">回首页</a>　·　support@hutudan.com</div>
+  </footer>
+</div>
+
+<script src="../../assets/common.js"></script>
+<script>
+(function(){
+  var F = window.FT, $ = F.$, files = [], busy = false;
+  var drop = $('#drop'), list = $('#files'), res = $('#res'), go = $('#go');
+
+  function render(){
+    list.innerHTML = '';
+    files.forEach(function(f, i){
+      var li = document.createElement('li');
+      li.innerHTML = '<span class="nm"></span><span class="sz"></span><button class="rm" title="移除">✕</button>';
+      li.querySelector('.nm').textContent = f.name;
+      li.querySelector('.sz').textContent = F.fmtSize(f.size);
+      li.querySelector('.rm').onclick = function(e){ e.stopPropagation(); files.splice(i,1); render(); };
+      list.appendChild(li);
+    });
+    go.disabled = !files.length || busy;
+  }
+
+  F.setupDrop(drop, function(fs){
+    files = files.concat(fs.filter(function(f){ return /^image\//.test(f.type) || /\.(jpe?g|png|webp|gif|bmp)$/i.test(f.name); }));
+    render();
+  });
+
+  F.$$('.pill').forEach(function(p){
+    p.onclick = function(){
+      F.$$('.pill').forEach(function(x){ x.classList.remove('on'); });
+      p.classList.add('on');
+      $('#target').value = p.dataset.kb;
+    };
+  });
+  $('#target').oninput = function(){
+    F.$$('.pill').forEach(function(x){ x.classList.toggle('on', +x.dataset.kb === +$('#target').value); });
+  };
+
+  function tryEncode(canvas, type, q){
+    return new Promise(function(r){ canvas.toBlob(function(b){ r(b); }, type, q); });
+  }
+
+  async function compressOne(file, targetBytes, type){
+    var o = await F.loadImage(file);
+    var img = o.img;
+    var w0 = img.naturalWidth, h0 = img.naturalHeight;
+    var scale = 1, best = null;
+    for (var round = 0; round < 14; round++){
+      var w = Math.max(1, Math.round(w0 * scale)), h = Math.max(1, Math.round(h0 * scale));
+      var cv = document.createElement('canvas');
+      cv.width = w; cv.height = h;
+      var ctx = cv.getContext('2d');
+      if (type === 'image/jpeg'){
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);
+      }
+      ctx.drawImage(img, 0, 0, w, h);
+      var lo = 0.05, hi = 0.96, found = null;
+      for (var i = 0; i < 7; i++){
+        var mid = (lo + hi) / 2;
+        var b = await tryEncode(cv, type, mid);
+        if (!b) break;
+        if (b.size <= targetBytes){ found = b; lo = mid; } else { hi = mid; }
+      }
+      if (found){ best = found; break; }
+      scale *= 0.84;
+      if (Math.round(w0 * scale) < 24) break;
+    }
+    URL.revokeObjectURL(o.url);
+    if (!best){
+      var cv2 = document.createElement('canvas');
+      cv2.width = 16; cv2.height = 16; cv2.getContext('2d').fillRect(0, 0, 16, 16);
+      best = await tryEncode(cv2, type, 0.3);
+    }
+    return best;
+  }
+
+  go.onclick = async function(){
+    if (!files.length || busy) return;
+    busy = true; go.disabled = true; go.textContent = '压缩中…';
+    res.innerHTML = '';
+    var target = Math.max(5, +$('#target').value || 100) * 1024;
+    var type = $('#fmt').value;
+    var ext = type === 'image/jpeg' ? 'jpg' : (type === 'image/webp' ? 'webp' : 'png');
+    for (var i = 0; i < files.length; i++){
+      var f = files[i];
+      var item = document.createElement('div');
+      item.className = 'item';
+      item.innerHTML = '<span class="nm"></span><span class="stat">处理中…</span>';
+      item.querySelector('.nm').textContent = f.name;
+      res.appendChild(item);
+      try {
+        var blob, finalName, skipped = false;
+        if (f.size <= target){
+          blob = f; finalName = f.name; skipped = true;
+        } else {
+          blob = await compressOne(f, target, type);
+          finalName = F.saveName(f.name, ext);
+        }
+        var a = document.createElement('button');
+        a.className = 'btn sm primary';
+        a.textContent = '下载';
+        a.onclick = function(b, n){ return function(){ F.download(b, n); }; }(blob, finalName);
+        var stat = item.querySelector('.stat');
+        if (skipped){
+          stat.textContent = F.fmtSize(f.size) + ' · 本来就在 ' + Math.round(target / 1024) + 'KB 以内，没动它';
+        } else {
+          stat.textContent = F.fmtSize(f.size) + ' → ' + F.fmtSize(blob.size);
+          var dl = document.createElement('span');
+          dl.className = 'delta';
+          dl.textContent = '省了 ' + Math.max(0, Math.round((1 - blob.size / f.size) * 100)) + '%';
+          item.appendChild(dl);
+        }
+        item.appendChild(a);
+        go.textContent = '压缩中… ' + (i + 1) + '/' + files.length;
+      } catch (e){
+        item.querySelector('.stat').textContent = '失败：' + e.message;
+      }
+    }
+    busy = false; go.disabled = !files.length; go.textContent = '开始压缩';
+    F.toast('压完了，点右边下载');
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>
