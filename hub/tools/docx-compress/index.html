@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Word 文档压缩在线免费：把 docx 里的图片压小，不上传 - 糊涂蛋工具箱</title>
+<meta name="description" content="Word 文档（docx）太大发不出去？在线把里面的大图缩一缩，正文排版一个字不动。也能处理 pptx、xlsx。浏览器本地处理，文件不上传。">
+<meta name="keywords" content="word压缩,docx压缩,文档太大怎么变小,ppt压缩,docx瘦身,在线word压缩">
+<link rel="stylesheet" href="../../assets/base.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <a class="logo" href="../../index.html"><span data-egg></span><span>糊涂蛋工具箱</span></a>
+    <div class="spacer"></div>
+    <div class="nav"><a href="./../pdf-compress/">PDF 压缩</a><a href="./../image-compress/">图片压缩</a></div>
+  </div>
+
+  <div class="tool-head">
+    <a class="crumb" href="../../index.html">← 全部工具</a>
+    <h1>Word 文档压缩</h1>
+    <p>一份 Word 几十兆，多半是插进去的照片没压过。这里把文档里的大图缩到合理尺寸，正文、排版、页码全不动。本地处理，不上传。</p>
+  </div>
+
+  <div class="tool-body card">
+    <div class="drop" id="drop">
+      <p class="big">把 Word 文档拖进来，或者点一下选</p>
+      <p class="sub">支持 .docx，也认 .pptx / .xlsx；老版 .doc 请先另存为 .docx</p>
+      <input type="file" accept=".docx,.pptx,.xlsx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" multiple>
+    </div>
+
+    <ul class="filelist" id="files"></ul>
+
+    <div class="row">
+      <div class="field" style="min-width:190px">
+        <label>图片最长边</label>
+        <select id="side">
+          <option value="1280">1280 px（发邮件、手机上开会看）</option>
+          <option value="1600" selected>1600 px（默认，投影和打印都够）</option>
+          <option value="2000">2000 px（还要印出来）</option>
+          <option value="0">不缩尺寸，只重压画质</option>
+        </select>
+      </div>
+      <div class="field" style="min-width:150px">
+        <label>图片画质</label>
+        <select id="q">
+          <option value="0.7">省地方</option>
+          <option value="0.8" selected>标准</option>
+          <option value="0.9">高</option>
+        </select>
+      </div>
+      <button class="btn primary" id="go" disabled>开始压缩</button>
+    </div>
+
+    <p class="note"><b>只动图片，不动文字：</b>文档里的文字、样式、批注、页眉页脚都原样保留，改的是 word/media 里那些照片。所以一份纯文字文档压不出多少，一份塞了十几张手机照片的文档能掉到原来的十分之一。</p>
+
+    <div class="res" id="res"></div>
+  </div>
+
+  <div class="related card" style="margin-top:22px">
+    <h3 style="font-size:16px">几个提醒</h3>
+    <p class="muted" style="font-size:13.5px;margin:8px 0 0">压完请先用 Word 打开看一眼再发出去。图片是重新编码的，画质有轻微损失，这跟所有压缩工具一样。文档里如果嵌了 PDF 或视频，那些不归这里管。要压 PDF 请用 <a href="./../pdf-compress/">PDF 压缩</a>。</p>
+  </div>
+
+  <footer>
+    <div>文件不离开你的设备 · 不上传服务器 · 不存任何记录</div>
+    <div style="margin-top:6px"><a href="../../index.html">回首页</a>　·　support@hutudan.com</div>
+  </footer>
+</div>
+
+<script src="../../assets/zipkit.js"></script>
+<script src="../../assets/common.js"></script>
+<script>
+(function(){
+  var F = window.FT, $ = F.$, files = [], busy = false;
+  var res = $('#res'), go = $('#go');
+
+  function render(){
+    var list = $('#files'); list.innerHTML = '';
+    files.forEach(function(f, i){
+      var li = document.createElement('li');
+      li.innerHTML = '<span class="nm"></span><span class="sz"></span><button class="rm">✕</button>';
+      li.querySelector('.nm').textContent = f.name;
+      li.querySelector('.sz').textContent = F.fmtSize(f.size);
+      li.querySelector('.rm').onclick = function(e){ e.stopPropagation(); files.splice(i,1); render(); };
+      list.appendChild(li);
+    });
+    go.disabled = !files.length || busy;
+  }
+
+  F.setupDrop($('#drop'), function(fs){
+    files = files.concat(fs.filter(function(f){ return /\.(docx|pptx|xlsx)$/i.test(f.name); }));
+    render();
+  });
+
+  function loadBlob(blob){
+    return new Promise(function(ok, bad){
+      var url = URL.createObjectURL(blob);
+      var img = new Image();
+      img.onload = function(){ ok({ img: img, url: url }); };
+      img.onerror = function(){ URL.revokeObjectURL(url); bad(new Error('图片读不出来')); };
+      img.src = url;
+    });
+  }
+
+  async function shrinkMedia(entries, maxSide, q){
+    var saved = [], touched = {}, total = 0;
+    for (var i = 0; i < entries.length; i++){
+      var e = entries[i];
+      if (!/(^|\/)(word|ppt|xl)\/media\//i.test('/' + e.name)) continue;
+      if (!/\.(jpe?g|png)$/i.test(e.name)) continue;
+      var mime = /\.png$/i.test(e.name) ? 'image/png' : 'image/jpeg';
+      var oldSize = e.data.length;
+      var o;
+      try { o = await loadBlob(new Blob([e.data], { type: mime })); }
+      catch (err){ continue; }
+      var w = o.img.naturalWidth, h = o.img.naturalHeight;
+      URL.revokeObjectURL(o.url);
+      var tooBig = maxSide > 0 && Math.max(w, h) > maxSide;
+      var heavy = oldSize > 100 * 1024;
+      if (!tooBig && !heavy) continue;
+
+      var k = tooBig ? maxSide / Math.max(w, h) : 1;
+      var nw = Math.max(1, Math.round(w * k)), nh = Math.max(1, Math.round(h * k));
+      var cv = document.createElement('canvas');
+      cv.width = nw; cv.height = nh;
+      var ctx = cv.getContext('2d');
+      if (mime === 'image/jpeg'){ ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, nw, nh); }
+      ctx.drawImage(o.img, 0, 0, nw, nh);
+      var blob = await F.canvasToBlob(cv, mime, q);
+      if (!blob || blob.size >= oldSize) continue;
+      e.data = new Uint8Array(await blob.arrayBuffer());
+      saved.push({ name: e.name.replace(/^.*media\//i, ''), from: oldSize, to: blob.size, w: w, h: h, nw: nw, nh: nh });
+      total += oldSize - blob.size;
+    }
+    return { saved: saved, total: total };
+  }
+
+  go.onclick = async function(){
+    if (!files.length || busy) return;
+    busy = true; go.disabled = true; res.innerHTML = '';
+    var maxSide = +$('#side').value, q = +$('#q').value;
+    for (var i = 0; i < files.length; i++){
+      var f = files[i];
+      var item = document.createElement('div');
+      item.className = 'item';
+      item.innerHTML = '<span class="nm"></span><span class="stat">处理中…</span>';
+      item.querySelector('.nm').textContent = f.name;
+      res.appendChild(item);
+      try {
+        var entries = await window.ZIPKIT.read(await f.arrayBuffer());
+        var r = await shrinkMedia(entries, maxSide, q);
+        var blob = await window.ZIPKIT.write(entries.map(function(e){
+          return { name: e.name, data: e.data };
+        }));
+        var pct = Math.round((1 - blob.size / f.size) * 100);
+        var stat = item.querySelector('.stat');
+        stat.textContent = F.fmtSize(f.size) + ' → ' + F.fmtSize(blob.size) +
+          ' · ' + (pct > 0 ? '省了 ' + pct + '%' : '压不下来') +
+          '（动了 ' + r.saved.length + ' 张图）';
+        var ext = ((f.name.match(/\.(docx|pptx|xlsx)$/i) || [0, 'docx'])[1] || 'docx').toLowerCase();
+        var outName = f.name.replace(/\.[^.]+$/, '') + '-压缩.' + ext;
+        var a = document.createElement('button');
+        a.className = 'btn sm primary'; a.textContent = '下载';
+        a.onclick = function(b, n){ return function(){ F.download(b, n); }; }(blob, outName);
+        item.appendChild(a);
+        if (r.saved.length) item.title = r.saved.slice(0, 8).map(function(s){
+          return s.name + ' ' + s.w + '×' + s.h + '→' + s.nw + '×' + s.nh;
+        }).join('，');
+        go.textContent = '压缩中… ' + (i + 1) + '/' + files.length;
+      } catch (e){
+        item.querySelector('.stat').textContent = '失败：' + e.message;
+      }
+    }
+    busy = false; go.disabled = !files.length; go.textContent = '开始压缩';
+    F.toast('压完了，记得先用 Word 打开看一眼');
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>
