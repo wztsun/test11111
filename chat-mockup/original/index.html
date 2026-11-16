@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>微信</title>
+<link rel="apple-touch-icon" href="./logo.png"><link rel="icon" href="./logo.png">
+<script>
+/* 本地版：把浏览器伪装成 iPhone，绕过站点的手机端限制（原站只认 iPhone/Android） */
+(function(){
+  var UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+  var def = function(obj, key, val){ try{ Object.defineProperty(obj, key, {get:function(){return val;}, configurable:true}); }catch(e){} };
+  def(navigator, 'userAgent', UA);
+  def(navigator, 'appVersion', UA.replace('Mozilla/',''));
+  def(navigator, 'platform', 'iPhone');
+  def(navigator, 'vendor', 'Apple Computer, Inc.');
+  def(navigator, 'maxTouchPoints', 5);
+  def(navigator, 'userAgentData', {
+    mobile: true, platform: 'iOS', brands: [{brand:'Safari', version:'17'}, {brand:'Not.A/Brand', version:'24'}],
+    getHighEntropyValues: function(){ return Promise.resolve({ architecture:'arm', bitness:'', mobile:true, model:'iPhone', platform:'iOS', platformVersion:'17.0', uaFullVersion:'17.0' }); },
+    toJSON: function(){ return {mobile:true, platform:'iOS'}; }
+  });
+  def(screen, 'width', 390);
+  def(screen, 'height', 844);
+  def(screen, 'availWidth', 390);
+  def(screen, 'availHeight', 844);
+  def(window, 'devicePixelRatio', 3);
+  def(window, 'orientation', 0);
+  def(window, 'outerWidth', 390);
+  def(window, 'outerHeight', 844);
+  def(window, 'ontouchstart', null);
+  window.__LOCAL_MIRROR__ = true;
+})();
+</script>
+<script>
+  var _ver = 'mozilla/5.0 (iphone; cpu iphone os 17_0 like mac os x) applewebkit/605.1.15 (khtml, like gecko) version/17.0 mobile/15e148 safari/604.1';
+  function addMeta(type){
+    document.head.insertAdjacentHTML('beforeend', '<meta name="viewport" content="width=device-width, minimal-ui, user-scalable=no, viewport-fit=' + (type ? 'cover' : 'contain') + '"><meta name="apple-mobile-web-app-status-bar-style" content="' + (type ? 'black-translucent' : 'default') + '" />');
+  }
+  if (/iphone|ipad|ipod|ios/.test(_ver)){
+    var _ver_type = _ver.match(/version\/(\d{2})/)[1];
+    if (_ver_type <= 18){ document.documentElement.dataset.low = 'true'; }
+    if (_ver_type > 18 && _ver_type <= 26){ addMeta(1); document.documentElement.dataset.ver = 'true'; }
+  } else {
+    addMeta(0);
+  }
+</script>
+<link href="./static/main.css" rel="stylesheet">
+</head>
+<body>
+<div class="wxLoad"><p>努力加载</p></div>
+<noscript>You need to enable JavaScript to run this app.</noscript>
+<div id="root"></div>
+<script src="./static/main.js"></script>
+<script>
+  document.body.classList.add('isIphone');
+  if (window.screen && window.screen.width >= 410) document.body.classList.add('devicePixelRatio');
+</script>
+</body>
+</html>
